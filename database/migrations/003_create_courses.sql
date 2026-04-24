@@ -1,0 +1,2 @@
+-- Placeholder migration
+-- Create courses table here later.

@@ -1,0 +1,2 @@
+-- Placeholder migration
+-- Create sections table here later.

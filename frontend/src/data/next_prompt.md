@@ -1,0 +1,1 @@
+rsync -avz -e "ssh -p 2203" --exclude-from='.gitignore' ./ deploy@38.47.180.238:/home/deploy/lms/

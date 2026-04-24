@@ -1,0 +1,8 @@
+{
+  "name": "project-lms",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ]
+}

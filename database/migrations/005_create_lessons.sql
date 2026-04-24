@@ -1,0 +1,2 @@
+-- Placeholder migration
+-- Create lessons table here later.

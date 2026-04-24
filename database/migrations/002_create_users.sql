@@ -1,0 +1,2 @@
+-- Placeholder migration
+-- Create users table here later.

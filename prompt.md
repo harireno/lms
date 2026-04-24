@@ -1,0 +1,1 @@
+Lanjutkan patch diff untuk memperindah halaman /courses supaya daftar semua course juga setara dengan homepage dan detail page, terlampir semua script active yang saya gabungkan dalam 1 file terlampir.
