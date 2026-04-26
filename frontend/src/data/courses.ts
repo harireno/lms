@@ -2482,13 +2482,193 @@ du -sh lms</code></pre>
           },
         ],
       },
+
+      // =========================================================
+      // NEW LESSON: Local → GitHub → VPS Workflow
+      // =========================================================
+
+      {
+        id: "l2l-19a",
+        title: "Setup GitHub dan Push Project dari Local",
+        duration: "25 min",
+        summary:
+          "Membuat akun GitHub, repository, SSH key local, lalu push project LMS dari komputer local ke GitHub.",
+        order: 2,
+        materials: [
+          {
+            id: "l2l-19a-html",
+            title: "Setup GitHub dan Push Project",
+            type: "html",
+            description:
+              "Workflow lengkap dari local ke GitHub menggunakan SSH key.",
+            htmlContent: `        
+          <h2>🎯 Tujuan</h2>
+          <p>Kita akan menghubungkan project local ke GitHub sebagai pusat source code.</p>
+
+          <h3>1. Buat Account GitHub</h3>
+          <p>Jika belum punya, daftar di https://github.com</p>
+
+          <h3>2. Buat Repository</h3>
+          <ul>
+            <li>Nama: <b>lms</b></li>
+            <li>Jangan centang README</li>
+          </ul>
+
+          <h3>3. Generate SSH Key (LOCAL)</h3>
+          <p>Jalankan di komputer local:</p>
+          <pre><code>ssh-keygen -t ed25519 -C "email_kamu@gmail.com"</code></pre>
+
+          <p>Tekan Enter terus sampai selesai.</p>
+
+          <h3>4. Copy SSH Key</h3>
+          <pre><code>cat ~/.ssh/id_ed25519.pub</code></pre>
+
+          <p>Copy hasilnya → masuk ke GitHub:</p>
+          <ul>
+            <li>Settings → SSH and GPG Keys</li>
+            <li>New SSH Key → Paste</li>
+          </ul>
+
+          <h3>5. Test Koneksi</h3>
+          <pre><code>ssh -T git@github.com</code></pre>
+
+          <p>Jika sukses akan muncul pesan welcome.</p>
+
+          <h3>6. Push Project ke GitHub</h3>
+          <p><b>WAJIB dijalankan di folder project local:</b></p>
+          <pre><code>cd /mnt/d/projects/html/lms</code></pre>
+
+          <pre><code>git init
+  git add .
+  git commit -m "Initial LMS"
+  git branch -M main
+  git remote add origin git@github.com:USERNAME/lms.git
+  git push -u origin main</code></pre>
+
+          <h3>⚠️ Troubleshooting</h3>
+          <ul>
+            <li>❌ error repository name → pastikan pakai USERNAME GitHub, bukan email</li>
+            <li>❌ file besar tidak hilang → cek recycle bin / gunakan rm permanent</li>
+          </ul>
+        `,
+          },
+        ],  
+      },
+
+      {
+        id: "l2l-19b",
+        title: "Clone Repository ke VPS (Posisi Folder yang Benar)",
+        duration: "20 min",
+        summary:
+          "Menyiapkan SSH key di VPS, menghubungkannya ke GitHub, lalu clone repository ke folder /var/www/lms dengan struktur yang benar.",
+        order: 3,
+        materials: [
+          {
+            id: "l2l-19b-html",
+            title: "Clone Repository ke VPS",
+            type: "html",
+            description:
+              "Clone repository GitHub ke VPS tanpa salah posisi folder.",
+            htmlContent: `      
+          <h2>🎯 Tujuan</h2>
+          <p>Menarik source code dari GitHub ke VPS dengan struktur folder yang benar.</p>
+
+          <h3>1. Masuk ke VPS</h3>
+          <pre><code>ssh deploy@IP_VPS</code></pre>
+
+          <h3>2. Generate SSH Key di VPS</h3>
+          <pre><code>ssh-keygen -t ed25519 -C "vps@email.com"</code></pre>
+
+          <h3>3. Copy ke GitHub</h3>
+          <pre><code>cat ~/.ssh/id_ed25519.pub</code></pre>
+
+          <p>Tambahkan ke GitHub seperti sebelumnya.</p>
+
+          <h3>4. Test</h3>
+          <pre><code>ssh -T git@github.com</code></pre>
+
+          <h3>5. Setup Folder</h3>
+          <pre><code>cd /var/www
+  mkdir lms
+  cd lms</code></pre>
+
+          <h3>6. Clone Repository</h3>
+          <pre><code>git clone git@github.com:USERNAME/lms.git .</code></pre>
+
+          <p><b>Perhatikan tanda titik (.)</b> → artinya clone ke folder saat ini.</p>
+
+          <h3>⚠️ Troubleshooting REAL CASE</h3>
+
+          <p><b>Case 1:</b></p>
+          <pre><code>fatal: destination path '.' already exists</code></pre>
+          <p>Solusi:</p>
+          <pre><code>rm -rf *
+  rm -rf .git</code></pre>
+
+          <p><b>Case 2:</b> Folder jadi double</p>
+          <pre><code>/var/www/lms/lms/frontend</code></pre>
+
+          <p>Ini terjadi karena clone tanpa titik:</p>
+          <pre><code>git clone repo</code></pre>
+
+          <p>Solusi: gunakan titik (.)</p>
+
+          <h3>Struktur yang BENAR</h3>
+          <pre><code>/var/www/lms/frontend</code></pre>
+        `,
+          },
+        ],
+      },
+
+      {
+        id: "l2l-19c",
+        title: "Workflow Update Code (Real Developer Workflow)",
+        duration: "15 min",
+        summary:
+          "Workflow update harian dari local ke GitHub, lalu git pull dari VPS tanpa upload ulang manual.",
+        order: 4,
+        materials: [
+          {
+            id: "l2l-19c-html",
+            title: "Workflow Update Code",
+            type: "html",
+            description:
+              "Update code dari local ke GitHub lalu pull di VPS.",
+            htmlContent: `         
+          <h2>🎯 Tujuan</h2>
+          <p>Memahami workflow update tanpa upload ulang.</p>
+
+          <h3>Di Local</h3>
+          <pre><code>cd /mnt/d/projects/html/lms
+  git add .
+  git commit -m "Update feature"
+  git push</code></pre>
+
+          <h3>Di VPS</h3>
+          <pre><code>cd /var/www/lms
+  git pull</code></pre>
+
+          <h3>Jika ada dependency baru</h3>
+          <pre><code>cd frontend
+  npm install</code></pre>
+
+          <h3>⚠️ Tips Penting</h3>
+          <ul>
+            <li>Tidak perlu upload ulang via SCP</li>
+            <li>Gunakan git sebagai source of truth</li>
+            <li>Selalu pastikan folder: /var/www/lms</li>
+          </ul>
+        `,
+          },
+        ],
+      },      
       {
         id: "l2l-20",
         title: "Clone repository",
         duration: "20 min",
         summary:
           "Menarik source code LMS dari repository ke VPS dengan workflow yang aman, mudah diikuti oleh pemula, dan tetap relevan untuk learner yang sudah terbiasa memakai Git.",      
-        order: 2,
+        order: 5,
         materials: [
           {
             id: "l2l-20-html",
@@ -2855,7 +3035,7 @@ git log --oneline -n 5</code></pre>
         duration: "18 min",
         summary:
           "Menginstall seluruh dependency frontend dengan aman, memahami fungsi npm install, memastikan Node.js dan npm siap, serta menyiapkan project sebelum build production.",      
-        order: 3,
+        order: 6,
         materials: [
           {
             id: "l2l-21-html",
@@ -3115,36 +3295,480 @@ ls -ld node_modules</code></pre>
       {
         id: "l2l-22",
         title: "Build production",
-        duration: "12 min",
+        duration: "28 min",
         summary:
-          "Menjalankan build production Next.js untuk memastikan project siap live.",
+          "Menjalankan build production Next.js dari folder frontend LMS, mengecek hasil build, memahami error umum, dan memastikan aplikasi siap masuk tahap test run production.",  
         order: 4,
         materials: [
           {
             id: "l2l-22-html",
             title: "Build LMS Production",
             type: "html",
-            description: "Build production untuk frontend LMS.",
+            description:
+              "Panduan lengkap build production untuk frontend LMS di VPS Ubuntu.",    
             htmlContent:
-              "<h2>Build production</h2><pre><code>npm run build</code></pre><p>Kalau ada error build, maka inilah salah satu titik penting yang nanti bisa menambah atau mengubah lesson di course ini.</p>",
+              `<h2>Build LMS Production</h2>
+<p>Setelah source code sudah berada di VPS dan dependency sudah diinstall, langkah berikutnya adalah melakukan <strong>build production</strong>.</p>
+
+<p>Build production adalah proses menyiapkan aplikasi Next.js agar siap dijalankan dalam mode production. Pada tahap ini, Next.js akan memeriksa source code, melakukan optimasi, membuat file build, dan menyiapkan output yang nanti akan dijalankan oleh server.</p>
+
+<div class="lesson-current-state-note">
+  <strong>Target lesson ini:</strong> kita menjalankan <code>npm run build</code> dari folder <code>/var/www/lms/frontend</code>, memastikan folder build terbentuk, dan memahami troubleshooting jika build gagal.
+</div>
+
+<h3>Kenapa build production diperlukan?</h3>
+<p>Di komputer local, kita biasanya menjalankan aplikasi dengan mode development. Mode development cocok untuk coding karena cepat reload dan mudah debug.</p>
+
+<p>Namun untuk VPS production, kita perlu build agar aplikasi:</p>
+
+<ul>
+  <li>lebih siap dijalankan secara stabil,</li>
+  <li>lebih optimal untuk diakses user,</li>
+  <li>bisa dijalankan dengan <code>npm run start</code>,</li>
+  <li>dan siap disambungkan ke PM2 serta Nginx.</li>
+</ul>
+
+<h3>Folder tempat menjalankan command</h3>
+<p>Command build <strong>wajib dijalankan dari folder frontend</strong>, bukan dari <code>/var/www</code> dan bukan dari <code>/var/www/lms</code>.</p>
+
+<pre><code>cd /var/www/lms/frontend</code></pre>
+
+<p>Cek posisi folder:</p>
+
+<pre><code>pwd</code></pre>
+
+<p>Output yang benar kira-kira:</p>
+
+<pre><code>/var/www/lms/frontend</code></pre>
+
+<p>Cek isi folder:</p>
+
+<pre><code>ls -la</code></pre>
+
+<p>Pastikan kita melihat file penting seperti:</p>
+
+<ul>
+  <li><code>package.json</code></li>
+  <li><code>package-lock.json</code> jika ada</li>
+  <li><code>src</code></li>
+  <li><code>next.config</code> jika ada</li>
+  <li><code>node_modules</code> setelah dependency diinstall</li>
+</ul>
+
+<h3>Cek Node.js dan npm</h3>
+<p>Sebelum build, cek dulu apakah Node.js dan npm tersedia.</p>
+
+<pre><code>node -v</code></pre>
+
+<pre><code>npm -v</code></pre>
+
+<p>Jika muncul nomor versi, berarti Node.js dan npm sudah tersedia.</p>
+
+<p>Untuk melihat lokasi binary Node.js dan npm:</p>
+
+<pre><code>command -v node</code></pre>
+
+<pre><code>command -v npm</code></pre>
+
+<h3>Jika Node.js belum ada</h3>
+<p>Kalau command <code>node -v</code> atau <code>npm -v</code> tidak dikenali, berarti Node.js belum terinstall atau belum terbaca di PATH.</p>
+
+<p>Install Node.js LTS sesuai lesson sebelumnya. Contoh pola umum di Ubuntu:</p>
+
+<pre><code>node -v
+npm -v</code></pre>
+
+<p>Jika masih belum ada, kembali ke lesson <strong>Install Node.js LTS</strong> terlebih dahulu sebelum melanjutkan build.</p>
+
+<h3>Cek dependency sudah terinstall</h3>
+<p>Masih dari folder:</p>
+
+<pre><code>cd /var/www/lms/frontend</code></pre>
+
+<p>Cek apakah folder <code>node_modules</code> sudah ada:</p>
+
+<pre><code>ls -ld node_modules</code></pre>
+
+<p>Jika folder belum ada, jalankan:</p>
+
+<pre><code>npm install</code></pre>
+
+<p>Setelah selesai, cek lagi:</p>
+
+<pre><code>ls -ld node_modules</code></pre>
+
+<h3>Jalankan build production</h3>
+<p>Jika posisi folder sudah benar dan dependency sudah tersedia, jalankan:</p>
+
+<pre><code>npm run build</code></pre>
+
+<p>Command ini membaca script <code>build</code> dari file <code>package.json</code>. Pada project Next.js, biasanya script tersebut menjalankan:</p>
+
+<pre><code>next build</code></pre>
+
+<h3>Cara cek apakah script build tersedia</h3>
+<p>Masih dari folder <code>/var/www/lms/frontend</code>, jalankan:</p>
+
+<pre><code>cat package.json</code></pre>
+
+<p>Cari bagian <code>scripts</code>. Contoh yang benar:</p>
+
+<pre><code>"scripts": {
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start"
+}</code></pre>
+
+<p>Kalau <code>build</code> belum ada, berarti <code>npm run build</code> tidak bisa dijalankan sebelum script tersebut ditambahkan.</p>
+
+<h3>Cek hasil build</h3>
+<p>Jika build berhasil, Next.js biasanya membuat folder:</p>
+
+<pre><code>.next</code></pre>
+
+<p>Cek dengan command:</p>
+
+<pre><code>ls -la .next</code></pre>
+
+<p>Jika folder <code>.next</code> ada dan berisi file hasil build, berarti aplikasi sudah berhasil dibuild.</p>
+
+<h3>Video pendamping</h3>
+<p>Video berikut bisa dipakai sebagai pendamping visual agar learner langsung memahami proses build production.</p>
+
+<div class="lesson-video-embed">
+  <iframe
+    width="560"
+    height="315"
+    src="https://www.youtube.com/embed/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ"
+    title="Build LMS Production"
+    loading="lazy"
+    referrerpolicy="strict-origin-when-cross-origin"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    allowfullscreen
+  ></iframe>
+</div>
+
+<h3>Troubleshooting umum</h3>
+
+<h4>1. Error: npm: command not found</h4>
+<p>Artinya npm belum tersedia atau Node.js belum terinstall dengan benar.</p>
+
+<pre><code>node -v
+npm -v
+command -v node
+command -v npm</code></pre>
+
+<p>Solusi: kembali ke lesson install Node.js LTS, lalu pastikan versi Node.js dan npm muncul.</p>
+
+<h4>2. Error: missing script: build</h4>
+<p>Artinya di file <code>package.json</code> belum ada script <code>build</code>.</p>
+
+<pre><code>cat package.json</code></pre>
+
+<p>Pastikan bagian scripts memiliki <code>"build": "next build"</code>.</p>
+
+<h4>3. Error: module not found</h4>
+<p>Biasanya dependency belum lengkap atau ada import file yang salah.</p>
+
+<pre><code>npm install
+npm run build</code></pre>
+
+<p>Jika masih error, baca nama module atau file yang disebutkan pada pesan error.</p>
+
+<h4>4. Error karena posisi folder salah</h4>
+<p>Jika menjalankan <code>npm run build</code> dari folder yang salah, npm bisa tidak menemukan <code>package.json</code>.</p>
+
+<p>Pastikan posisi folder:</p>
+
+<pre><code>cd /var/www/lms/frontend
+pwd
+ls -la</code></pre>
+
+<h4>5. Build lama atau server terasa berat</h4>
+<p>Build production bisa memakan resource CPU dan RAM. Untuk VPS kecil, proses build mungkin terasa lebih lama.</p>
+
+<p>Cek penggunaan resource:</p>
+
+<pre><code>free -h
+df -h
+top</code></pre>
+
+<p>Jika RAM sangat kecil, build bisa gagal. Solusinya bisa dengan mengurangi beban service lain, menambah swap, atau memakai VPS dengan RAM lebih besar.</p>
+
+<h3>Ringkasan command lesson ini</h3>
+
+<pre><code>cd /var/www/lms/frontend
+pwd
+ls -la
+node -v
+npm -v
+ls -ld node_modules
+npm install
+npm run build
+ls -la .next</code></pre>
+
+<h3>Kesimpulan</h3>
+<p><strong>Build production</strong> adalah titik validasi penting sebelum LMS dijalankan secara live. Kalau build berhasil, berarti source code, dependency, dan konfigurasi dasar frontend sudah cukup siap untuk masuk ke tahap berikutnya, yaitu test run aplikasi.</p>
+
+<p>Jika build gagal, jangan langsung panik. Baca pesan error paling bawah, cek posisi folder, cek dependency, cek script di <code>package.json</code>, lalu ulangi proses build setelah masalah diperbaiki.</p>`,
+          },
+          {
+            id: "l2l-22-video",
+            title: "Video Build LMS Production",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami proses build production LMS.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "28 min",       
           },
         ],
       },
       {
         id: "l2l-23",
-        title: "Test run aplikasi",
-        duration: "9 min",
+        title: "Menjalankan LMS",
+        duration: "30 min",
         summary:
-          "Menjalankan LMS secara manual terlebih dahulu sebelum masuk ke PM2.",
+          "Menjalankan LMS secara manual dari folder frontend, mengecek port aktif, membuka aplikasi dari browser, dan memahami troubleshooting sebelum masuk ke PM2.",   
         order: 5,
         materials: [
           {
             id: "l2l-23-html",
             title: "Menjalankan LMS",
             type: "html",
-            description: "Menjalankan aplikasi secara manual untuk tes awal.",
+            description:
+              "Panduan menjalankan LMS secara manual di VPS sebelum memakai PM2.", 
             htmlContent:
-              "<h2>Test run</h2><pre><code>npm run start</code></pre><p>Setelah build berhasil, jalankan aplikasi dan cek apakah port 3000 aktif sebelum diteruskan lewat Nginx.</p>",
+              `<h2>Menjalankan LMS</h2>
+<p>Setelah proses <strong>build production</strong> berhasil, langkah berikutnya adalah menjalankan LMS secara manual terlebih dahulu.</p>
+
+<p>Tahap ini penting karena sebelum kita memakai PM2, Nginx, domain, dan SSL, kita perlu memastikan aplikasi Next.js benar-benar bisa hidup di VPS.</p>
+
+<div class="lesson-current-state-note">
+  <strong>Target lesson ini:</strong> menjalankan LMS dengan <code>npm run start</code>, memastikan port <code>3000</code> aktif, lalu melakukan troubleshooting jika aplikasi belum bisa dibuka.
+</div>
+
+<h3>Folder tempat menjalankan command</h3>
+<p>Semua command utama di lesson ini dijalankan dari folder frontend LMS:</p>
+
+<pre><code>cd /var/www/lms/frontend</code></pre>
+
+<p>Cek posisi folder:</p>
+
+<pre><code>pwd</code></pre>
+
+<p>Output yang benar:</p>
+
+<pre><code>/var/www/lms/frontend</code></pre>
+
+<p>Cek isi folder:</p>
+
+<pre><code>ls -la</code></pre>
+
+<p>Pastikan ada file dan folder penting berikut:</p>
+
+<ul>
+  <li><code>package.json</code></li>
+  <li><code>node_modules</code></li>
+  <li><code>.next</code></li>
+  <li><code>src</code></li>
+</ul>
+
+<h3>Pastikan build sudah berhasil</h3>
+<p>Sebelum menjalankan LMS mode production, folder <code>.next</code> harus sudah ada.</p>
+
+<pre><code>ls -la .next</code></pre>
+
+<p>Jika folder <code>.next</code> belum ada, jalankan build terlebih dahulu:</p>
+
+<pre><code>npm run build</code></pre>
+
+<h3>Cek script start di package.json</h3>
+<p>Command <code>npm run start</code> hanya bisa berjalan jika di <code>package.json</code> ada script <code>start</code>.</p>
+
+<pre><code>cat package.json</code></pre>
+
+<p>Pastikan bagian <code>scripts</code> kurang lebih seperti ini:</p>
+
+<pre><code>"scripts": {
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start"
+}</code></pre>
+
+<h3>Jalankan LMS</h3>
+<p>Dari folder:</p>
+
+<pre><code>cd /var/www/lms/frontend</code></pre>
+
+<p>Jalankan aplikasi:</p>
+
+<pre><code>npm run start</code></pre>
+
+<p>Jika berhasil, biasanya muncul informasi bahwa aplikasi berjalan di port <code>3000</code>.</p>
+
+<pre><code>Local: http://localhost:3000</code></pre>
+
+<h3>Catatan penting untuk pemula</h3>
+<p>Saat menjalankan <code>npm run start</code>, terminal akan terlihat seperti “tertahan” dan tidak kembali ke prompt biasa. Ini normal.</p>
+
+<p>Artinya aplikasi sedang berjalan aktif di terminal tersebut. Jangan langsung ditutup jika masih ingin mengetes aplikasi.</p>
+
+<p>Untuk menghentikan aplikasi, tekan:</p>
+
+<pre><code>CTRL + C</code></pre>
+
+<h3>Cek apakah port 3000 aktif</h3>
+<p>Buka terminal VPS lain, atau hentikan dulu aplikasi jika ingin menjalankan pengecekan dari terminal yang sama.</p>
+
+<p>Cek apakah port <code>3000</code> sedang dipakai:</p>
+
+<pre><code>ss -tulpn | grep 3000</code></pre>
+
+<p>Jika command <code>ss</code> tidak tersedia, install package berikut:</p>
+
+<pre><code>sudo apt update
+sudo apt install iproute2 -y</code></pre>
+
+<p>Lalu ulangi:</p>
+
+<pre><code>ss -tulpn | grep 3000</code></pre>
+
+<h3>Cek dari dalam VPS menggunakan curl</h3>
+<p>Masih dari VPS, kita bisa mengetes aplikasi dengan:</p>
+
+<pre><code>curl http://localhost:3000</code></pre>
+
+<p>Jika <code>curl</code> belum ada, install dulu:</p>
+
+<pre><code>sudo apt update
+sudo apt install curl -y</code></pre>
+
+<p>Lalu ulangi:</p>
+
+<pre><code>curl http://localhost:3000</code></pre>
+
+<p>Jika keluar HTML, berarti aplikasi sudah hidup dari sisi server.</p>
+
+<h3>Apakah aplikasi langsung bisa dibuka dari browser?</h3>
+<p>Pada tahap ini, aplikasi biasanya baru berjalan di <code>localhost:3000</code> di dalam VPS.</p>
+
+<p>Artinya, dari browser laptop kita belum tentu bisa langsung membuka:</p>
+
+<pre><code>http://IP_VPS:3000</code></pre>
+
+<p>Karena akses port <code>3000</code> bisa saja diblokir firewall atau memang belum kita expose ke public. Nanti akses public yang benar akan dibuat melalui Nginx reverse proxy di port <code>80</code> dan <code>443</code>.</p>
+
+<h3>Jika ingin test sementara dari browser</h3>
+<p>Untuk test sementara, pastikan aplikasi berjalan di host yang benar.</p>
+
+<pre><code>npm run start -- -H 0.0.0.0</code></pre>
+
+<p>Lalu cek firewall:</p>
+
+<pre><code>sudo ufw status</code></pre>
+
+<p>Jika UFW aktif dan kita ingin membuka port 3000 sementara:</p>
+
+<pre><code>sudo ufw allow 3000/tcp</code></pre>
+
+<p>Setelah testing selesai, lebih aman tutup lagi port 3000:</p>
+
+<pre><code>sudo ufw delete allow 3000/tcp</code></pre>
+
+<p>Untuk production, akses public sebaiknya tetap lewat Nginx, bukan membuka port 3000 terus-menerus.</p>
+
+<h3>Video pendamping</h3>
+<p>Video berikut bisa dipakai sebagai pendamping visual agar learner langsung memahami proses menjalankan LMS.</p>
+
+<div class="lesson-video-embed">
+  <iframe
+    width="560"
+    height="315"
+    src="https://www.youtube.com/embed/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ"
+    title="Menjalankan LMS"
+    loading="lazy"
+    referrerpolicy="strict-origin-when-cross-origin"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    allowfullscreen
+  ></iframe>
+</div>
+
+<h3>Troubleshooting umum</h3>
+
+<h4>1. Error: missing script: start</h4>
+<p>Artinya di <code>package.json</code> belum ada script <code>start</code>.</p>
+
+<pre><code>cat package.json</code></pre>
+
+<p>Pastikan ada:</p>
+
+<pre><code>"start": "next start"</code></pre>
+
+<h4>2. Error: Could not find a production build</h4>
+<p>Artinya aplikasi belum dibuild atau folder <code>.next</code> belum ada.</p>
+
+<pre><code>cd /var/www/lms/frontend
+npm run build
+npm run start</code></pre>
+
+<h4>3. Error: port 3000 already in use</h4>
+<p>Artinya port <code>3000</code> sedang dipakai proses lain.</p>
+
+<pre><code>ss -tulpn | grep 3000</code></pre>
+
+<p>Jika terlihat ada proses Node.js lama, hentikan prosesnya dengan hati-hati. Contoh:</p>
+
+<pre><code>ps aux | grep node</code></pre>
+
+<p>Lalu hentikan PID yang sesuai:</p>
+
+<pre><code>kill PID_NUMBER</code></pre>
+
+<h4>4. Browser tidak bisa membuka IP VPS:3000</h4>
+<p>Kemungkinan penyebab:</p>
+
+<ul>
+  <li>aplikasi hanya listen di localhost,</li>
+  <li>port 3000 belum dibuka firewall,</li>
+  <li>provider VPS memblokir port tertentu,</li>
+  <li>atau memang belum saatnya akses via port 3000 karena nanti akan lewat Nginx.</li>
+</ul>
+
+<p>Cek dari dalam VPS terlebih dahulu:</p>
+
+<pre><code>curl http://localhost:3000</code></pre>
+
+<h4>5. Terminal tertahan setelah npm run start</h4>
+<p>Ini bukan error. Aplikasi sedang berjalan. Untuk keluar, tekan:</p>
+
+<pre><code>CTRL + C</code></pre>
+
+<h3>Ringkasan command lesson ini</h3>
+
+<pre><code>cd /var/www/lms/frontend
+pwd
+ls -la
+ls -la .next
+cat package.json
+npm run start
+ss -tulpn | grep 3000
+curl http://localhost:3000</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita menjalankan LMS secara manual untuk memastikan aplikasi benar-benar hidup setelah proses build production.</p>
+
+<p>Kalau <code>npm run start</code> berhasil dan <code>curl http://localhost:3000</code> mengembalikan HTML, berarti LMS sudah berjalan dari sisi VPS.</p>
+
+<p>Langkah berikutnya adalah membuat LMS tetap hidup di background menggunakan PM2, lalu menghubungkannya ke public melalui Nginx reverse proxy.</p>`,
+          },
+          {
+            id: "l2l-23-video",
+            title: "Video Menjalankan LMS",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami cara menjalankan LMS setelah build production.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "30 min",  
           },
         ],
       },
@@ -3160,8 +3784,9 @@ ls -ld node_modules</code></pre>
       {
         id: "l2l-24",
         title: "Point domain ke VPS",
-        duration: "8 min",
-        summary: "Menyiapkan DNS agar domain mengarah ke IP public VPS.",
+        duration: "28 min",
+        summary:
+          "Memahami DNS, A record, IP public VPS, cara mengecek propagasi domain, serta troubleshooting saat domain belum mengarah ke server.", 
         order: 1,
         materials: [
           {
@@ -3170,78 +3795,1303 @@ ls -ld node_modules</code></pre>
             type: "html",
             description: "Konsep dasar A record untuk LMS.",
             htmlContent:
-              "<h2>Point domain ke VPS</h2><p>Buat atau edit A record di DNS panel agar domain utama atau subdomain LMS mengarah ke IP VPS.</p>",
+              `<h2>DNS ke VPS</h2>
+<p>Pada lesson ini, kita akan menghubungkan domain ke VPS agar LMS bisa diakses memakai nama domain, bukan hanya IP address.</p>
+
+<h3>Apa itu DNS?</h3>
+<p><strong>DNS</strong> adalah sistem yang menerjemahkan nama domain menjadi IP address server.</p>
+<p>Contoh sederhananya:</p>
+<ul>
+  <li><code>lmsdomainkita.com</code> adalah nama yang mudah dibaca manusia.</li>
+  <li><code>38.47.180.238</code> adalah alamat IP VPS yang dipahami komputer.</li>
+</ul>
+
+<h3>Apa itu A Record?</h3>
+<p><strong>A record</strong> adalah record DNS yang mengarahkan domain atau subdomain ke IP address server.</p>
+<p>Untuk LMS kita, biasanya yang dibuat adalah:</p>
+<ul>
+  <li><code>@</code> atau root domain → mengarah ke IP VPS</li>
+  <li><code>www</code> → mengarah ke IP VPS</li>
+  <li>atau subdomain seperti <code>lms</code> → mengarah ke IP VPS</li>
+</ul>
+
+<h3>Contoh kebutuhan DNS LMS</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Target</th>
+      <th>Type</th>
+      <th>Name / Host</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Domain utama</td>
+      <td>A</td>
+      <td>@</td>
+      <td>IP VPS kita</td>
+    </tr>
+    <tr>
+      <td>WWW</td>
+      <td>A</td>
+      <td>www</td>
+      <td>IP VPS kita</td>
+    </tr>
+    <tr>
+      <td>Subdomain LMS</td>
+      <td>A</td>
+      <td>lms</td>
+      <td>IP VPS kita</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Folder kerja command</h3>
+<p>Untuk lesson DNS, sebagian besar proses dilakukan di <strong>DNS panel domain</strong>, bukan di folder project.</p>
+<p>Namun untuk command pengecekan di VPS, kita bisa menjalankannya dari folder mana saja. Supaya konsisten, gunakan folder project LMS:</p>
+
+<pre><code>cd /var/www/lms
+pwd</code></pre>
+
+<p>Jika folder belum ada, berarti project LMS belum berada di lokasi tersebut. Cek dulu:</p>
+
+<pre><code>ls -la /var/www</code></pre>
+
+<h3>Langkah 1 — Cek IP public VPS</h3>
+<p>Command ini dijalankan di <strong>VPS</strong>, dari folder mana saja. Supaya konsisten:</p>
+
+<pre><code>cd /var/www/lms
+curl ifconfig.me</code></pre>
+
+<p>Jika <code>curl</code> belum ada, install dulu:</p>
+
+<pre><code>sudo apt update
+sudo apt install curl -y</code></pre>
+
+<p>Cek lagi:</p>
+
+<pre><code>curl ifconfig.me</code></pre>
+
+<p>Catat IP yang muncul. IP inilah yang akan dipasang di DNS panel.</p>
+
+<h3>Langkah 2 — Masuk ke DNS panel domain</h3>
+<p>Masuk ke panel tempat domain dibeli atau dikelola. Contohnya bisa di provider domain, Cloudflare, Niagahoster, IDCloudHost, Rumahweb, Namecheap, GoDaddy, dan sejenisnya.</p>
+<p>Cari menu seperti:</p>
+<ul>
+  <li>DNS Management</li>
+  <li>Manage DNS</li>
+  <li>Zone Editor</li>
+  <li>DNS Records</li>
+</ul>
+
+<h3>Langkah 3 — Buat atau edit A Record</h3>
+<p>Tambahkan record berikut:</p>
+
+<pre><code>Type  : A
+Name  : @
+Value : IP_PUBLIC_VPS
+TTL   : Auto / Default</code></pre>
+
+<p>Jika ingin memakai <code>www</code>, tambahkan juga:</p>
+
+<pre><code>Type  : A
+Name  : www
+Value : IP_PUBLIC_VPS
+TTL   : Auto / Default</code></pre>
+
+<p>Jika ingin memakai subdomain seperti <code>lms.domainkita.com</code>, tambahkan:</p>
+
+<pre><code>Type  : A
+Name  : lms
+Value : IP_PUBLIC_VPS
+TTL   : Auto / Default</code></pre>
+
+<h3>Langkah 4 — Tunggu propagasi DNS</h3>
+<p>Setelah DNS disimpan, perubahan tidak selalu langsung aktif. Biasanya bisa beberapa menit, tetapi kadang bisa lebih lama tergantung provider dan cache DNS.</p>
+
+<h3>Langkah 5 — Cek DNS dari komputer lokal</h3>
+<p>Command ini dijalankan dari <strong>komputer kita</strong>, bukan dari folder project. Di Windows bisa pakai Command Prompt atau PowerShell:</p>
+
+<pre><code>nslookup domainkita.com</code></pre>
+
+<p>Untuk subdomain:</p>
+
+<pre><code>nslookup lms.domainkita.com</code></pre>
+
+<p>Jika hasilnya sudah menampilkan IP VPS, berarti DNS sudah mengarah dengan benar.</p>
+
+<h3>Alternatif cek DNS dari VPS</h3>
+<p>Command ini dijalankan di <strong>VPS</strong>. Foldernya bebas, tetapi kita gunakan:</p>
+
+<pre><code>cd /var/www/lms
+nslookup domainkita.com</code></pre>
+
+<p>Jika <code>nslookup</code> belum tersedia, install package berikut:</p>
+
+<pre><code>sudo apt update
+sudo apt install dnsutils -y</code></pre>
+
+<p>Cek ulang:</p>
+
+<pre><code>nslookup domainkita.com</code></pre>
+
+<h3>Cek menggunakan dig</h3>
+<p><code>dig</code> juga tersedia dari package <code>dnsutils</code>.</p>
+
+<pre><code>dig domainkita.com</code></pre>
+
+<p>Untuk melihat jawaban ringkas:</p>
+
+<pre><code>dig +short domainkita.com</code></pre>
+
+<p>Jika hasilnya adalah IP VPS, DNS sudah benar.</p>
+
+<h3>Apakah setelah DNS diarahkan, LMS langsung bisa dibuka?</h3>
+<p>Belum tentu. DNS hanya membuat domain mengarah ke VPS. Agar domain benar-benar menampilkan LMS, kita masih perlu memastikan:</p>
+<ul>
+  <li>LMS berjalan di VPS, misalnya di port <code>3000</code>.</li>
+  <li>Nginx sudah menjadi reverse proxy dari domain ke port internal LMS.</li>
+  <li>Firewall membuka port <code>80</code> dan nanti <code>443</code>.</li>
+  <li>SSL sudah dipasang untuk HTTPS.</li>
+</ul>
+
+<div class="lesson-current-state-note">
+  <strong>Catatan penting:</strong> DNS bukan pengganti Nginx. DNS hanya mengarahkan domain ke IP VPS. Nginx yang nanti mengatur request domain masuk ke aplikasi LMS.
+</div>
+
+<h3>Cek port web di VPS</h3>
+<p>Command ini dijalankan di <strong>VPS</strong>, dari folder mana saja. Supaya konsisten:</p>
+
+<pre><code>cd /var/www/lms
+sudo ufw status</code></pre>
+
+<p>Jika UFW belum ada:</p>
+
+<pre><code>sudo apt update
+sudo apt install ufw -y</code></pre>
+
+<p>Untuk membuka akses HTTP dan HTTPS:</p>
+
+<pre><code>sudo ufw allow 80
+sudo ufw allow 443
+sudo ufw status</code></pre>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. nslookup masih menampilkan IP lama</h4>
+<p>Kemungkinan DNS masih propagasi atau record lama masih tersimpan di cache.</p>
+<p>Solusi:</p>
+<ul>
+  <li>Tunggu beberapa menit lalu cek ulang.</li>
+  <li>Pastikan record A sudah benar.</li>
+  <li>Pastikan tidak ada record lain yang bentrok.</li>
+</ul>
+
+<h4>2. Domain sudah mengarah ke IP VPS, tetapi browser timeout</h4>
+<p>Ini biasanya bukan masalah DNS lagi. Kemungkinan port web belum terbuka, Nginx belum aktif, atau aplikasi belum berjalan.</p>
+<p>Cek firewall:</p>
+
+<pre><code>sudo ufw status</code></pre>
+
+<p>Cek apakah Nginx aktif:</p>
+
+<pre><code>sudo systemctl status nginx</code></pre>
+
+<p>Jika Nginx belum ada, install:</p>
+
+<pre><code>sudo apt update
+sudo apt install nginx -y</code></pre>
+
+<p>Aktifkan dan cek statusnya:</p>
+
+<pre><code>sudo systemctl enable nginx
+sudo systemctl start nginx
+sudo systemctl status nginx</code></pre>
+
+<h4>3. Domain mengarah benar, tetapi yang muncul halaman default Nginx</h4>
+<p>Artinya domain sudah sampai ke VPS, tetapi konfigurasi reverse proxy untuk LMS belum dibuat atau belum aktif.</p>
+<p>Ini akan kita bahas di lesson berikutnya tentang Nginx reverse proxy.</p>
+
+<h4>4. Menggunakan Cloudflare tetapi IP tidak sama</h4>
+<p>Jika Cloudflare proxy aktif, hasil DNS bisa menampilkan IP Cloudflare, bukan IP VPS. Ini normal jika proxy berwarna orange cloud.</p>
+<p>Untuk testing awal, kita bisa set DNS menjadi DNS only terlebih dahulu agar pengecekan lebih mudah.</p>
+
+<h4>5. Salah mengisi Name / Host</h4>
+<p>Beberapa provider memakai format berbeda. Biasanya:</p>
+<ul>
+  <li><code>@</code> berarti domain utama.</li>
+  <li><code>www</code> berarti <code>www.domainkita.com</code>.</li>
+  <li><code>lms</code> berarti <code>lms.domainkita.com</code>.</li>
+</ul>
+
+<h3>Ringkasan command lesson ini</h3>
+
+<pre><code>cd /var/www/lms
+curl ifconfig.me
+nslookup domainkita.com
+dig +short domainkita.com
+sudo ufw status
+sudo ufw allow 80
+sudo ufw allow 443
+sudo systemctl status nginx</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita menghubungkan domain ke IP public VPS menggunakan A record.</p>
+<p>Jika hasil <code>nslookup</code> atau <code>dig +short</code> sudah menampilkan IP VPS, berarti DNS sudah benar.</p>
+<p>Langkah berikutnya adalah menyiapkan Nginx reverse proxy agar request dari domain bisa diteruskan ke LMS yang berjalan di port internal seperti <code>3000</code>.</p>`,
+          },
+          {
+            id: "l2l-24-video",
+            title: "Video DNS ke VPS",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami cara mengarahkan domain ke IP public VPS.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "28 min",         
           },
         ],
       },
       {
         id: "l2l-25",
         title: "Setup Nginx reverse proxy",
-        duration: "12 min",
+        duration: "35 min",
         summary:
-          "Meneruskan request domain ke aplikasi Next.js yang berjalan di port internal.",
+          "Menghubungkan domain publik ke aplikasi LMS yang berjalan di port internal seperti 3000 menggunakan Nginx reverse proxy.", 
         order: 2,
         materials: [
           {
             id: "l2l-25-html",
             title: "Nginx Reverse Proxy",
             type: "html",
-            description: "Konfigurasi dasar reverse proxy untuk LMS.",
+            description:
+              "Konfigurasi Nginx sebagai reverse proxy dari domain ke aplikasi LMS di port internal.",   
             htmlContent:
-              "<h2>Setup Nginx Reverse Proxy</h2><p>Nginx akan menerima traffic dari port 80/443 lalu meneruskannya ke aplikasi Next.js di port 3000.</p><pre><code>server {\n  listen 80;\n  server_name yourdomain.com;\n\n  location / {\n    proxy_pass http://localhost:3000;\n    proxy_http_version 1.1;\n    proxy_set_header Upgrade $http_upgrade;\n    proxy_set_header Connection 'upgrade';\n    proxy_set_header Host $host;\n  }\n}</code></pre>",
+              `<h2>Nginx Reverse Proxy</h2>
+<p>Pada lesson ini, kita akan membuat domain publik mengarah ke aplikasi LMS yang berjalan di dalam VPS.</p>
+<p>Contoh kondisi kita:</p>
+<ul>
+  <li>Domain: <code>domainkita.com</code></li>
+  <li>IP VPS: sudah diarahkan lewat DNS A Record</li>
+  <li>Aplikasi LMS berjalan di port internal: <code>3000</code></li>
+  <li>Nginx menerima request dari browser lewat port <code>80</code></li>
+</ul>
+
+<h3>Apa itu Reverse Proxy?</h3>
+<p><strong>Reverse proxy</strong> adalah pola di mana Nginx menerima request dari user, lalu meneruskannya ke aplikasi internal.</p>
+<p>Jadi user cukup membuka:</p>
+
+<pre><code>http://domainkita.com</code></pre>
+
+<p>Padahal aplikasi LMS sebenarnya berjalan di:</p>
+
+<pre><code>http://localhost:3000</code></pre>
+
+<p>Dengan cara ini, port <code>3000</code> tidak perlu dibuka untuk publik. Yang dibuka cukup port web standar, yaitu <code>80</code> dan nanti <code>443</code> untuk HTTPS.</p>
+
+<h3>Folder kerja command</h3>
+<p>Untuk pengecekan project LMS, gunakan folder project:</p>
+
+<pre><code>cd /var/www/lms
+pwd</code></pre>
+
+<p>Untuk konfigurasi Nginx, file akan dibuat di folder sistem Nginx:</p>
+
+<pre><code>/etc/nginx/sites-available/</code></pre>
+
+<p>Jadi command edit Nginx boleh dijalankan dari folder mana saja, tetapi pada materi ini kita tetap mulai dari folder project agar learner tidak bingung.</p>
+
+<h3>Langkah 1 — Pastikan aplikasi LMS berjalan</h3>
+<p>Command ini dijalankan di <strong>VPS</strong>, di folder project LMS:</p>
+
+<pre><code>cd /var/www/lms
+npm run start</code></pre>
+
+<p>Jika aplikasi sudah berjalan, biasanya akan muncul informasi bahwa server aktif di port <code>3000</code>.</p>
+
+<p>Jika ingin mengecek dari terminal lain di VPS:</p>
+
+<pre><code>curl http://localhost:3000</code></pre>
+
+<p>Jika <code>curl</code> belum tersedia:</p>
+
+<pre><code>sudo apt update
+sudo apt install curl -y</code></pre>
+
+<p>Cek ulang:</p>
+
+<pre><code>curl http://localhost:3000</code></pre>
+
+<h3>Langkah 2 — Cek apakah Nginx sudah terinstall</h3>
+<p>Command ini dijalankan di VPS. Folder bebas, tetapi kita gunakan folder project:</p>
+
+<pre><code>cd /var/www/lms
+nginx -v</code></pre>
+
+<p>Jika muncul versi Nginx, berarti Nginx sudah ada.</p>
+<p>Jika muncul command not found, install dulu:</p>
+
+<pre><code>sudo apt update
+sudo apt install nginx -y</code></pre>
+
+<p>Setelah install, cek status Nginx:</p>
+
+<pre><code>sudo systemctl status nginx</code></pre>
+
+<p>Jika belum aktif, jalankan:</p>
+
+<pre><code>sudo systemctl enable nginx
+sudo systemctl start nginx
+sudo systemctl status nginx</code></pre>
+
+<h3>Langkah 3 — Pastikan port 80 dibuka</h3>
+<p>Command ini dijalankan di VPS:</p>
+
+<pre><code>sudo ufw status</code></pre>
+
+<p>Jika <code>ufw</code> belum tersedia:</p>
+
+<pre><code>sudo apt update
+sudo apt install ufw -y</code></pre>
+
+<p>Buka port HTTP:</p>
+
+<pre><code>sudo ufw allow 80
+sudo ufw status</code></pre>
+
+<p>Nanti saat HTTPS sudah dipasang, kita juga akan membuka port <code>443</code>.</p>
+
+<h3>Langkah 4 — Buat file konfigurasi Nginx</h3>
+<p>Command ini dijalankan di VPS. Kita akan membuat file config baru di <code>sites-available</code>.</p>
+
+<pre><code>sudo nano /etc/nginx/sites-available/lms</code></pre>
+
+<p>Isi dengan konfigurasi berikut. Ganti <code>domainkita.com</code> dan <code>www.domainkita.com</code> sesuai domain kita.</p>
+
+<pre><code>server {
+  listen 80;
+  listen [::]:80;
+
+  server_name domainkita.com www.domainkita.com;
+
+  location / {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_http_version 1.1;
+
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    proxy_cache_bypass $http_upgrade;
+  }
+}</code></pre>
+
+<p>Simpan file di nano dengan:</p>
+<ul>
+  <li><code>CTRL + O</code> lalu Enter untuk save</li>
+  <li><code>CTRL + X</code> untuk keluar</li>
+</ul>
+
+<h3>Langkah 5 — Aktifkan konfigurasi site</h3>
+<p>Command ini dijalankan di VPS:</p>
+
+<pre><code>sudo ln -s /etc/nginx/sites-available/lms /etc/nginx/sites-enabled/lms</code></pre>
+
+<p>Jika muncul error bahwa file sudah ada, artinya link sudah pernah dibuat. Kita bisa cek:</p>
+
+<pre><code>ls -la /etc/nginx/sites-enabled/</code></pre>
+
+<h3>Langkah 6 — Test konfigurasi Nginx</h3>
+<p>Sebelum reload, selalu test syntax Nginx:</p>
+
+<pre><code>sudo nginx -t</code></pre>
+
+<p>Jika hasilnya seperti ini, berarti aman:</p>
+
+<pre><code>syntax is ok
+test is successful</code></pre>
+
+<p>Jika ada error, jangan reload dulu. Baca pesan error-nya, biasanya ada info file dan nomor baris yang bermasalah.</p>
+
+<h3>Langkah 7 — Reload Nginx</h3>
+<p>Jika test sudah berhasil:</p>
+
+<pre><code>sudo systemctl reload nginx</code></pre>
+
+<p>Cek statusnya:</p>
+
+<pre><code>sudo systemctl status nginx</code></pre>
+
+<h3>Langkah 8 — Test dari browser</h3>
+<p>Buka dari browser di PC kita:</p>
+
+<pre><code>http://domainkita.com</code></pre>
+
+<p>Jika berhasil, LMS akan tampil melalui domain tanpa perlu menulis port <code>:3000</code>.</p>
+
+<h3>Langkah 9 — Test dari VPS</h3>
+<p>Command ini dijalankan di VPS:</p>
+
+<pre><code>curl -I http://domainkita.com</code></pre>
+
+<p>Jika berhasil, biasanya akan muncul response header seperti <code>HTTP/1.1 200 OK</code>, <code>301</code>, atau response lain dari aplikasi.</p>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. Browser menampilkan halaman default Nginx</h4>
+<p>Artinya domain sudah masuk ke VPS, tetapi config site LMS belum aktif atau masih kalah dengan default site.</p>
+<p>Cek file aktif:</p>
+
+<pre><code>ls -la /etc/nginx/sites-enabled/</code></pre>
+
+<p>Jika default masih aktif dan mengganggu, nonaktifkan:</p>
+
+<pre><code>sudo rm /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl reload nginx</code></pre>
+
+<h4>2. Muncul 502 Bad Gateway</h4>
+<p>Artinya Nginx aktif, tetapi aplikasi di belakangnya tidak bisa diakses.</p>
+<p>Cek apakah LMS berjalan:</p>
+
+<pre><code>cd /var/www/lms
+curl http://localhost:3000</code></pre>
+
+<p>Jika tidak ada response, jalankan ulang aplikasi:</p>
+
+<pre><code>cd /var/www/lms
+npm run start</code></pre>
+
+<h4>3. Domain timeout</h4>
+<p>Kemungkinan port <code>80</code> belum dibuka di firewall VPS atau security group provider.</p>
+<p>Cek UFW:</p>
+
+<pre><code>sudo ufw status</code></pre>
+
+<p>Buka port 80:</p>
+
+<pre><code>sudo ufw allow 80</code></pre>
+
+<h4>4. sudo nginx -t error</h4>
+<p>Jangan reload Nginx sebelum error diperbaiki.</p>
+<p>Cek pesan error, lalu buka file config:</p>
+
+<pre><code>sudo nano /etc/nginx/sites-available/lms</code></pre>
+
+<p>Kesalahan paling umum:</p>
+<ul>
+  <li>Kurang titik koma <code>;</code></li>
+  <li>Kurung kurawal <code>{ }</code> tidak lengkap</li>
+  <li>Domain salah tulis</li>
+  <li>File symlink dobel</li>
+</ul>
+
+<h4>5. curl localhost:3000 berhasil, tetapi domain tidak tampil</h4>
+<p>Berarti aplikasi LMS berjalan, tetapi jalur domain ke Nginx masih bermasalah.</p>
+<p>Cek DNS:</p>
+
+<pre><code>nslookup domainkita.com 8.8.8.8</code></pre>
+
+<p>Cek Nginx:</p>
+
+<pre><code>sudo nginx -t
+sudo systemctl status nginx</code></pre>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms
+npm run start
+curl http://localhost:3000
+nginx -v
+sudo systemctl status nginx
+sudo ufw status
+sudo ufw allow 80
+sudo nano /etc/nginx/sites-available/lms
+sudo ln -s /etc/nginx/sites-available/lms /etc/nginx/sites-enabled/lms
+sudo nginx -t
+sudo systemctl reload nginx
+curl -I http://domainkita.com</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Nginx reverse proxy membuat LMS bisa diakses lewat domain normal tanpa membuka port <code>3000</code> ke publik.</p>
+<p>Setelah tahap ini berhasil, domain seperti <code>domainkita.com</code> akan meneruskan request ke aplikasi LMS di <code>localhost:3000</code>.</p>
+<p>Langkah berikutnya adalah mengaktifkan konfigurasi dengan lebih rapi, memastikan reload aman, lalu melanjutkan ke HTTPS/SSL.</p>`,
+          },
+          {
+            id: "l2l-25-video",
+            title: "Video Nginx Reverse Proxy",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami Nginx reverse proxy dari domain ke aplikasi LMS.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "35 min",
           },
         ],
       },
       {
         id: "l2l-26",
         title: "Enable config dan reload Nginx",
-        duration: "8 min",
+        duration: "30 min",
         summary:
-          "Mengaktifkan site config dan memastikan syntax Nginx valid.",
+          "Mengaktifkan konfigurasi site Nginx, melakukan validasi syntax, reload service dengan aman, dan mengecek hasilnya dari VPS maupun browser.",     
         order: 3,
         materials: [
           {
             id: "l2l-26-html",
             title: "Enable Site Config",
             type: "html",
-            description: "Langkah validasi konfigurasi Nginx.",
+            description:
+              "Langkah aman mengaktifkan site config Nginx, test syntax, reload, dan troubleshooting error umum.", 
             htmlContent:
-              "<h2>Enable config</h2><pre><code>sudo ln -s ...\nsudo nginx -t\nsudo systemctl reload nginx</code></pre><p>Selalu uji syntax dengan <code>nginx -t</code> sebelum reload.</p>",
+              `<h2>Enable Site Config</h2>
+<p>Pada lesson ini, kita akan mengaktifkan konfigurasi Nginx yang sudah dibuat pada lesson sebelumnya.</p>
+<p>Tujuannya adalah agar domain publik seperti <code>domainkita.com</code> benar-benar memakai konfigurasi reverse proxy menuju aplikasi LMS di <code>localhost:3000</code>.</p>
+
+<h3>Apa arti enable site config?</h3>
+<p>Di Ubuntu, konfigurasi Nginx biasanya disimpan di dua folder penting:</p>
+<ul>
+  <li><code>/etc/nginx/sites-available/</code> → tempat menyimpan file konfigurasi site.</li>
+  <li><code>/etc/nginx/sites-enabled/</code> → tempat konfigurasi yang benar-benar aktif.</li>
+</ul>
+
+<p>File di <code>sites-available</code> belum otomatis aktif. Supaya aktif, kita membuat symbolic link ke <code>sites-enabled</code>.</p>
+
+<h3>Folder kerja command</h3>
+<p>Untuk konfigurasi Nginx, command boleh dijalankan dari folder mana saja karena file yang diedit berada di folder sistem.</p>
+<p>Namun supaya konsisten dengan course ini, mulai dari folder project LMS:</p>
+
+<pre><code>cd /var/www/lms
+pwd</code></pre>
+
+<p>Jika folder belum ada, cek dulu:</p>
+
+<pre><code>ls -la /var/www</code></pre>
+
+<h3>Langkah 1 — Cek apakah file config sudah ada</h3>
+<p>Command ini dijalankan di <strong>VPS</strong>:</p>
+
+<pre><code>ls -la /etc/nginx/sites-available/</code></pre>
+
+<p>Pastikan ada file config yang sudah kita buat, misalnya:</p>
+
+<pre><code>lms</code></pre>
+
+<p>Jika belum ada, berarti kita perlu kembali ke lesson sebelumnya dan membuat file config:</p>
+
+<pre><code>sudo nano /etc/nginx/sites-available/lms</code></pre>
+
+<h3>Langkah 2 — Cek isi file config</h3>
+<p>Sebelum diaktifkan, cek dulu isi file config:</p>
+
+<pre><code>sudo cat /etc/nginx/sites-available/lms</code></pre>
+
+<p>Pastikan bagian <code>server_name</code> sudah sesuai domain kita, misalnya:</p>
+
+<pre><code>server_name domainkita.com www.domainkita.com;</code></pre>
+
+<p>Pastikan juga <code>proxy_pass</code> mengarah ke port aplikasi LMS:</p>
+
+<pre><code>proxy_pass http://127.0.0.1:3000;</code></pre>
+
+<h3>Langkah 3 — Aktifkan site config</h3>
+<p>Command ini membuat symbolic link dari <code>sites-available</code> ke <code>sites-enabled</code>:</p>
+
+<pre><code>sudo ln -s /etc/nginx/sites-available/lms /etc/nginx/sites-enabled/lms</code></pre>
+
+<p>Setelah itu, cek apakah link sudah aktif:</p>
+
+<pre><code>ls -la /etc/nginx/sites-enabled/</code></pre>
+
+<p>Jika berhasil, akan terlihat link seperti:</p>
+
+<pre><code>lms -&gt; /etc/nginx/sites-available/lms</code></pre>
+
+<h3>Jika muncul error file already exists</h3>
+<p>Jika muncul pesan seperti <code>File exists</code>, artinya site config sudah pernah diaktifkan.</p>
+<p>Cek saja dengan:</p>
+
+<pre><code>ls -la /etc/nginx/sites-enabled/lms</code></pre>
+
+<p>Jika link sudah benar, tidak perlu dibuat ulang.</p>
+
+<h3>Langkah 4 — Nonaktifkan default site jika mengganggu</h3>
+<p>Kadang domain masih menampilkan halaman default Nginx karena default site masih aktif.</p>
+<p>Cek dulu:</p>
+
+<pre><code>ls -la /etc/nginx/sites-enabled/</code></pre>
+
+<p>Jika ada file atau link bernama <code>default</code>, kita boleh menonaktifkannya:</p>
+
+<pre><code>sudo rm /etc/nginx/sites-enabled/default</code></pre>
+
+<p>Perintah ini tidak menghapus file konfigurasi original di <code>sites-available</code>. Ia hanya menghapus link aktifnya.</p>
+
+<h3>Langkah 5 — Test syntax Nginx</h3>
+<p>Ini langkah wajib sebelum reload:</p>
+
+<pre><code>sudo nginx -t</code></pre>
+
+<p>Jika konfigurasi benar, hasilnya biasanya seperti:</p>
+
+<pre><code>nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful</code></pre>
+
+<p>Jika hasilnya error, jangan reload Nginx dulu. Perbaiki error sampai <code>nginx -t</code> sukses.</p>
+
+<h3>Langkah 6 — Reload Nginx</h3>
+<p>Jika test syntax sudah sukses, reload Nginx:</p>
+
+<pre><code>sudo systemctl reload nginx</code></pre>
+
+<p>Reload lebih aman daripada restart karena Nginx membaca ulang konfigurasi tanpa mematikan service secara penuh.</p>
+
+<h3>Langkah 7 — Cek status Nginx</h3>
+<p>Command ini dijalankan di VPS:</p>
+
+<pre><code>sudo systemctl status nginx</code></pre>
+
+<p>Jika statusnya <code>active (running)</code>, berarti Nginx berjalan.</p>
+
+<p>Jika Nginx belum aktif, jalankan:</p>
+
+<pre><code>sudo systemctl start nginx
+sudo systemctl status nginx</code></pre>
+
+<p>Jika ingin Nginx otomatis aktif setelah VPS reboot:</p>
+
+<pre><code>sudo systemctl enable nginx</code></pre>
+
+<h3>Langkah 8 — Test dari VPS</h3>
+<p>Command ini dijalankan di VPS:</p>
+
+<pre><code>curl -I http://domainkita.com</code></pre>
+
+<p>Jika <code>curl</code> belum ada, install dulu:</p>
+
+<pre><code>sudo apt update
+sudo apt install curl -y</code></pre>
+
+<p>Cek ulang:</p>
+
+<pre><code>curl -I http://domainkita.com</code></pre>
+
+<p>Jika berhasil, kita akan melihat response header dari server.</p>
+
+<h3>Langkah 9 — Test dari browser</h3>
+<p>Buka dari browser di PC:</p>
+
+<pre><code>http://domainkita.com</code></pre>
+
+<p>Jika benar, halaman LMS akan tampil tanpa perlu menulis <code>:3000</code>.</p>
+
+<h3>Langkah 10 — Cek apakah port 80 aktif</h3>
+<p>Jika domain belum bisa dibuka, cek firewall:</p>
+
+<pre><code>sudo ufw status</code></pre>
+
+<p>Jika port 80 belum terbuka:</p>
+
+<pre><code>sudo ufw allow 80
+sudo ufw status</code></pre>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. Error: File exists saat membuat symbolic link</h4>
+<p>Artinya link sudah ada. Cek:</p>
+
+<pre><code>ls -la /etc/nginx/sites-enabled/lms</code></pre>
+
+<p>Jika link sudah mengarah ke file yang benar, lanjut ke test syntax:</p>
+
+<pre><code>sudo nginx -t</code></pre>
+
+<h4>2. sudo nginx -t gagal</h4>
+<p>Jangan reload Nginx. Baca pesan error yang muncul.</p>
+<p>Biasanya error menunjukkan file dan nomor baris, misalnya:</p>
+
+<pre><code>/etc/nginx/sites-enabled/lms:12</code></pre>
+
+<p>Buka file config:</p>
+
+<pre><code>sudo nano /etc/nginx/sites-available/lms</code></pre>
+
+<p>Kesalahan umum:</p>
+<ul>
+  <li>Kurang tanda titik koma <code>;</code></li>
+  <li>Kurung kurawal <code>{ }</code> tidak lengkap</li>
+  <li>Salah menulis directive Nginx</li>
+  <li>Domain di <code>server_name</code> salah ketik</li>
+</ul>
+
+<h4>3. Browser masih menampilkan Welcome to Nginx</h4>
+<p>Kemungkinan default site masih aktif atau config LMS belum terbaca.</p>
+<p>Cek site aktif:</p>
+
+<pre><code>ls -la /etc/nginx/sites-enabled/</code></pre>
+
+<p>Jika ada default:</p>
+
+<pre><code>sudo rm /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl reload nginx</code></pre>
+
+<h4>4. Muncul 502 Bad Gateway</h4>
+<p>Artinya Nginx sudah aktif, tetapi aplikasi LMS di port <code>3000</code> belum berjalan atau tidak bisa diakses.</p>
+<p>Cek dari VPS:</p>
+
+<pre><code>cd /var/www/lms
+curl http://localhost:3000</code></pre>
+
+<p>Jika tidak ada response, jalankan aplikasi:</p>
+
+<pre><code>cd /var/www/lms
+npm run start</code></pre>
+
+<h4>5. Domain timeout</h4>
+<p>Kemungkinan firewall belum membuka port <code>80</code>, DNS belum benar, atau provider VPS memiliki firewall tambahan.</p>
+<p>Cek DNS dari PC:</p>
+
+<pre><code>nslookup domainkita.com 8.8.8.8</code></pre>
+
+<p>Cek firewall VPS:</p>
+
+<pre><code>sudo ufw status</code></pre>
+
+<p>Buka port 80:</p>
+
+<pre><code>sudo ufw allow 80</code></pre>
+
+<h4>6. Nginx tidak ditemukan</h4>
+<p>Jika command <code>nginx</code> belum tersedia, install Nginx:</p>
+
+<pre><code>sudo apt update
+sudo apt install nginx -y</code></pre>
+
+<p>Lalu cek:</p>
+
+<pre><code>nginx -v
+sudo systemctl status nginx</code></pre>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms
+ls -la /etc/nginx/sites-available/
+sudo cat /etc/nginx/sites-available/lms
+sudo ln -s /etc/nginx/sites-available/lms /etc/nginx/sites-enabled/lms
+ls -la /etc/nginx/sites-enabled/
+sudo rm /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl reload nginx
+sudo systemctl status nginx
+curl -I http://domainkita.com
+sudo ufw status
+sudo ufw allow 80</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita mengaktifkan site config Nginx dengan symbolic link, melakukan validasi syntax, lalu reload Nginx dengan aman.</p>
+<p>Urutan aman yang harus selalu diingat adalah:</p>
+
+<pre><code>enable config
+test syntax
+reload nginx
+test domain</code></pre>
+
+<p>Jika domain sudah menampilkan LMS tanpa port <code>:3000</code>, berarti reverse proxy sudah bekerja.</p>`,
+          },
+          {
+            id: "l2l-26-video",
+            title: "Video Enable Site Config",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami cara mengaktifkan konfigurasi Nginx, test syntax, dan reload service.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "30 min", 
           },
         ],
       },
       {
         id: "l2l-27",
         title: "Install Certbot",
-        duration: "7 min",
+        duration: "30 min",
         summary:
-          "Menyiapkan tool untuk generate sertifikat SSL gratis dari Let's Encrypt.",
+          "Menyiapkan Certbot dan plugin Nginx untuk membuat sertifikat SSL gratis dari Let's Encrypt agar LMS bisa memakai HTTPS.",      
         order: 4,
         materials: [
           {
             id: "l2l-27-html",
             title: "Install Certbot",
             type: "html",
-            description: "Install certbot untuk SSL otomatis.",
+            description:
+              "Install Certbot, cek status Nginx, cek domain, dan siapkan server sebelum generate SSL.",  
             htmlContent:
-              "<h2>Install Certbot</h2><pre><code>sudo apt install certbot python3-certbot-nginx -y</code></pre>",
+              `<h2>Install Certbot</h2>
+<p>Pada lesson ini, kita akan menginstall <strong>Certbot</strong>, yaitu tool yang membantu kita membuat sertifikat SSL gratis dari Let's Encrypt.</p>
+<p>Setelah SSL aktif, LMS kita bisa diakses menggunakan HTTPS:</p>
+
+<pre><code>https://domainkita.com</code></pre>
+
+<h3>Apa itu Certbot?</h3>
+<p><strong>Certbot</strong> adalah tool command line yang digunakan untuk meminta, memasang, dan memperpanjang sertifikat SSL dari Let's Encrypt.</p>
+<p>Dengan Certbot, kita tidak perlu membeli SSL manual untuk kebutuhan dasar website. Certbot juga bisa membantu mengubah konfigurasi Nginx agar mendukung HTTPS.</p>
+
+<h3>Kenapa HTTPS penting?</h3>
+<ul>
+  <li>Browser tidak menampilkan warning “Not Secure”.</li>
+  <li>Login LMS lebih aman karena data dikirim lewat koneksi terenkripsi.</li>
+  <li>Website terlihat lebih profesional.</li>
+  <li>Banyak fitur modern web lebih cocok berjalan di HTTPS.</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<p>Install Certbot dilakukan di level sistem VPS, jadi command boleh dijalankan dari folder mana saja.</p>
+<p>Namun agar course ini konsisten, kita mulai dari folder project LMS:</p>
+
+<pre><code>cd /var/www/lms
+pwd</code></pre>
+
+<p>Jika folder belum ada, cek dulu:</p>
+
+<pre><code>ls -la /var/www</code></pre>
+
+<h3>Langkah 1 — Pastikan domain sudah mengarah ke VPS</h3>
+<p>Sebelum install SSL, domain harus sudah mengarah ke IP VPS.</p>
+<p>Command ini bisa dijalankan dari PC lokal atau dari VPS:</p>
+
+<pre><code>nslookup domainkita.com 8.8.8.8</code></pre>
+
+<p>Hasil yang benar harus menampilkan IP public VPS.</p>
+<p>Contoh:</p>
+
+<pre><code>Name: domainkita.com
+Address: 38.47.180.238</code></pre>
+
+<p>Jika <code>nslookup</code> belum tersedia di VPS, install dulu:</p>
+
+<pre><code>sudo apt update
+sudo apt install dnsutils -y</code></pre>
+
+<p>Lalu cek ulang:</p>
+
+<pre><code>nslookup domainkita.com 8.8.8.8</code></pre>
+
+<h3>Langkah 2 — Pastikan Nginx sudah aktif</h3>
+<p>Certbot akan membaca konfigurasi Nginx. Jadi Nginx harus sudah terinstall dan berjalan.</p>
+
+<pre><code>nginx -v</code></pre>
+
+<p>Jika Nginx belum ada:</p>
+
+<pre><code>sudo apt update
+sudo apt install nginx -y</code></pre>
+
+<p>Cek status Nginx:</p>
+
+<pre><code>sudo systemctl status nginx</code></pre>
+
+<p>Jika belum aktif:</p>
+
+<pre><code>sudo systemctl enable nginx
+sudo systemctl start nginx
+sudo systemctl status nginx</code></pre>
+
+<h3>Langkah 3 — Pastikan konfigurasi Nginx valid</h3>
+<p>Sebelum memasang SSL, test dulu syntax Nginx:</p>
+
+<pre><code>sudo nginx -t</code></pre>
+
+<p>Jika sukses, hasilnya seperti ini:</p>
+
+<pre><code>nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful</code></pre>
+
+<p>Jika masih error, perbaiki konfigurasi Nginx terlebih dahulu sebelum lanjut ke Certbot.</p>
+
+<h3>Langkah 4 — Pastikan port 80 dan 443 dibuka</h3>
+<p>Command ini dijalankan di VPS:</p>
+
+<pre><code>sudo ufw status</code></pre>
+
+<p>Jika UFW belum tersedia:</p>
+
+<pre><code>sudo apt update
+sudo apt install ufw -y</code></pre>
+
+<p>Buka port HTTP dan HTTPS:</p>
+
+<pre><code>sudo ufw allow 80
+sudo ufw allow 443
+sudo ufw status</code></pre>
+
+<p>Port <code>80</code> dibutuhkan untuk proses verifikasi Let's Encrypt. Port <code>443</code> dibutuhkan untuk akses HTTPS.</p>
+
+<h3>Langkah 5 — Install Certbot dan plugin Nginx</h3>
+<p>Command ini dijalankan di VPS:</p>
+
+<pre><code>sudo apt update
+sudo apt install certbot python3-certbot-nginx -y</code></pre>
+
+<p>Package <code>certbot</code> adalah tool utamanya, sedangkan <code>python3-certbot-nginx</code> adalah plugin agar Certbot bisa membaca dan mengubah konfigurasi Nginx.</p>
+
+<h3>Langkah 6 — Cek versi Certbot</h3>
+<p>Setelah install selesai, cek apakah Certbot sudah tersedia:</p>
+
+<pre><code>certbot --version</code></pre>
+
+<p>Jika muncul versi Certbot, berarti instalasi berhasil.</p>
+
+<h3>Langkah 7 — Cek plugin Nginx Certbot</h3>
+<p>Untuk memastikan plugin Nginx tersedia, jalankan:</p>
+
+<pre><code>certbot plugins</code></pre>
+
+<p>Cari plugin yang berhubungan dengan Nginx. Jika plugin Nginx tampil, berarti Certbot siap digunakan dengan Nginx.</p>
+
+<h3>Langkah 8 — Cek domain dari browser</h3>
+<p>Sebelum generate SSL, pastikan domain sudah bisa dibuka melalui HTTP:</p>
+
+<pre><code>http://domainkita.com</code></pre>
+
+<p>Jika domain belum bisa dibuka lewat HTTP, jangan lanjut dulu ke SSL. Perbaiki DNS, Nginx, firewall, atau aplikasi LMS terlebih dahulu.</p>
+
+<h3>Langkah 9 — Cek dari VPS menggunakan curl</h3>
+<p>Command ini dijalankan di VPS:</p>
+
+<pre><code>curl -I http://domainkita.com</code></pre>
+
+<p>Jika <code>curl</code> belum tersedia:</p>
+
+<pre><code>sudo apt update
+sudo apt install curl -y</code></pre>
+
+<p>Cek ulang:</p>
+
+<pre><code>curl -I http://domainkita.com</code></pre>
+
+<p>Jika domain sudah merespons, kita siap lanjut ke lesson berikutnya untuk generate SSL.</p>
+
+<h3>Catatan penting tentang email Certbot</h3>
+<p>Saat generate SSL nanti, Certbot biasanya meminta email.</p>
+<p>Email ini digunakan untuk notifikasi penting, misalnya jika sertifikat hampir expired atau ada perubahan dari Let's Encrypt.</p>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. certbot: command not found</h4>
+<p>Artinya Certbot belum terinstall atau instalasi gagal.</p>
+
+<pre><code>sudo apt update
+sudo apt install certbot python3-certbot-nginx -y
+certbot --version</code></pre>
+
+<h4>2. python3-certbot-nginx tidak ditemukan</h4>
+<p>Pastikan repository Ubuntu sudah update:</p>
+
+<pre><code>sudo apt update</code></pre>
+
+<p>Lalu install ulang:</p>
+
+<pre><code>sudo apt install certbot python3-certbot-nginx -y</code></pre>
+
+<h4>3. Nginx belum aktif</h4>
+<p>Cek status:</p>
+
+<pre><code>sudo systemctl status nginx</code></pre>
+
+<p>Jika belum aktif:</p>
+
+<pre><code>sudo systemctl start nginx
+sudo systemctl status nginx</code></pre>
+
+<h4>4. sudo nginx -t gagal</h4>
+<p>Jangan lanjut ke SSL sebelum konfigurasi Nginx valid.</p>
+<p>Buka file config LMS:</p>
+
+<pre><code>sudo nano /etc/nginx/sites-available/lms</code></pre>
+
+<p>Kesalahan umum:</p>
+<ul>
+  <li>Kurang tanda titik koma <code>;</code></li>
+  <li>Kurung kurawal <code>{ }</code> tidak lengkap</li>
+  <li><code>server_name</code> salah ketik</li>
+  <li><code>proxy_pass</code> salah port</li>
+</ul>
+
+<h4>5. Domain belum bisa dibuka lewat HTTP</h4>
+<p>SSL tidak akan berhasil jika domain belum bisa diakses lewat HTTP.</p>
+<p>Cek DNS:</p>
+
+<pre><code>nslookup domainkita.com 8.8.8.8</code></pre>
+
+<p>Cek firewall:</p>
+
+<pre><code>sudo ufw status</code></pre>
+
+<p>Cek Nginx:</p>
+
+<pre><code>sudo systemctl status nginx
+sudo nginx -t</code></pre>
+
+<h4>6. Port 80 tertutup</h4>
+<p>Let's Encrypt membutuhkan akses ke port <code>80</code> untuk proses verifikasi HTTP challenge.</p>
+
+<pre><code>sudo ufw allow 80
+sudo ufw status</code></pre>
+
+<p>Jika provider VPS memiliki firewall tambahan di dashboard, pastikan port <code>80</code> dan <code>443</code> juga dibuka dari dashboard provider.</p>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms
+nslookup domainkita.com 8.8.8.8
+nginx -v
+sudo systemctl status nginx
+sudo nginx -t
+sudo ufw status
+sudo ufw allow 80
+sudo ufw allow 443
+sudo apt update
+sudo apt install certbot python3-certbot-nginx -y
+certbot --version
+certbot plugins
+curl -I http://domainkita.com</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita belum membuat sertifikat SSL. Kita baru menyiapkan tool-nya, yaitu Certbot dan plugin Nginx.</p>
+<p>Jika Certbot sudah terinstall, Nginx aktif, DNS benar, dan domain bisa dibuka lewat HTTP, maka kita siap lanjut ke lesson berikutnya: generate SSL dan mengaktifkan HTTPS.</p>`,
+          },
+          {
+            id: "l2l-27-video",
+            title: "Video Install Certbot",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami instalasi Certbot dan persiapan SSL Let's Encrypt untuk LMS.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "30 min",     
           },
         ],
       },
       {
         id: "l2l-28",
         title: "Generate SSL",
-        duration: "9 min",
-        summary: "Mengaktifkan HTTPS untuk domain LMS.",
+        duration: "35 min",
+        summary:
+          "Generate sertifikat SSL Let's Encrypt dengan Certbot, mengaktifkan HTTPS, redirect otomatis, dan mengecek auto-renewal.",  
         order: 5,
         materials: [
           {
             id: "l2l-28-html",
             title: "Aktifkan HTTPS",
             type: "html",
-            description: "Generate sertifikat SSL dan aktifkan redirect HTTPS.",
+            description:
+              "Generate sertifikat SSL, aktifkan HTTPS, cek konfigurasi Nginx, dan troubleshooting error Certbot.",  
             htmlContent:
-              "<h2>Generate SSL</h2><pre><code>sudo certbot --nginx</code></pre><p>Setelah ini, LMS seharusnya bisa diakses melalui HTTPS jika DNS sudah benar.</p>",
+              `<h2>Aktifkan HTTPS</h2>
+<p>Pada lesson ini, kita akan mengaktifkan HTTPS untuk domain LMS menggunakan Certbot dan Let's Encrypt.</p>
+<p>Jika berhasil, LMS bisa dibuka dengan alamat aman seperti:</p>
+
+<pre><code>https://domainkita.com</code></pre>
+
+<h3>Kenapa HTTPS penting?</h3>
+<ul>
+  <li>Browser tidak menampilkan label <strong>Not Secure</strong>.</li>
+  <li>Login dan data user lebih aman karena koneksi terenkripsi.</li>
+  <li>Website terlihat lebih profesional.</li>
+  <li>HTTPS adalah standar wajib untuk aplikasi production.</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<p>Command Certbot bekerja di level sistem VPS, jadi sebenarnya boleh dijalankan dari folder mana saja.</p>
+<p>Namun supaya konsisten dengan course ini, kita mulai dari folder project LMS:</p>
+
+<pre><code>cd /var/www/lms
+pwd</code></pre>
+
+<h3>Langkah 1 — Pastikan domain sudah resolve ke VPS</h3>
+<p>Command ini bisa dijalankan dari PC lokal atau dari VPS:</p>
+
+<pre><code>nslookup domainkita.com 8.8.8.8
+nslookup www.domainkita.com 8.8.8.8</code></pre>
+
+<p>Hasil yang benar harus menampilkan IP public VPS.</p>
+
+<h3>Langkah 2 — Pastikan Nginx aktif dan valid</h3>
+<p>Command ini dijalankan di VPS:</p>
+
+<pre><code>sudo systemctl status nginx
+sudo nginx -t</code></pre>
+
+<p>Jika Nginx belum terinstall:</p>
+
+<pre><code>sudo apt update
+sudo apt install nginx -y</code></pre>
+
+<p>Jika Nginx belum aktif:</p>
+
+<pre><code>sudo systemctl enable nginx
+sudo systemctl start nginx
+sudo systemctl status nginx</code></pre>
+
+<h3>Langkah 3 — Pastikan port 80 dan 443 terbuka</h3>
+<p>Command ini dijalankan di VPS:</p>
+
+<pre><code>sudo ufw status</code></pre>
+
+<p>Jika port belum dibuka:</p>
+
+<pre><code>sudo ufw allow 80
+sudo ufw allow 443
+sudo ufw status</code></pre>
+
+<h3>Langkah 4 — Pastikan Certbot sudah terinstall</h3>
+<p>Cek versi Certbot:</p>
+
+<pre><code>certbot --version</code></pre>
+
+<p>Jika belum ada:</p>
+
+<pre><code>sudo apt update
+sudo apt install certbot python3-certbot-nginx -y</code></pre>
+
+<p>Cek ulang:</p>
+
+<pre><code>certbot --version
+certbot plugins</code></pre>
+
+<h3>Langkah 5 — Generate SSL dengan Certbot</h3>
+<p>Command ini dijalankan di VPS. Ganti domain sesuai domain kita:</p>
+
+<pre><code>sudo certbot --nginx -d domainkita.com -d www.domainkita.com</code></pre>
+
+<p>Saat proses berjalan, Certbot biasanya akan meminta:</p>
+<ul>
+  <li>Email untuk notifikasi SSL.</li>
+  <li>Persetujuan Terms of Service.</li>
+  <li>Pilihan redirect HTTP ke HTTPS.</li>
+</ul>
+
+<p>Jika ada pilihan redirect, pilih opsi redirect agar semua akses HTTP otomatis diarahkan ke HTTPS.</p>
+
+<h3>Langkah 6 — Cek hasil HTTPS</h3>
+<p>Dari browser PC, buka:</p>
+
+<pre><code>https://domainkita.com</code></pre>
+
+<p>Dari VPS, cek dengan:</p>
+
+<pre><code>curl -I https://domainkita.com</code></pre>
+
+<p>Jika <code>curl</code> belum ada:</p>
+
+<pre><code>sudo apt update
+sudo apt install curl -y</code></pre>
+
+<h3>Langkah 7 — Cek konfigurasi Nginx setelah SSL</h3>
+<p>Setelah Certbot berhasil, test ulang Nginx:</p>
+
+<pre><code>sudo nginx -t
+sudo systemctl reload nginx
+sudo systemctl status nginx</code></pre>
+
+<h3>Langkah 8 — Cek auto-renewal SSL</h3>
+<p>Sertifikat Let's Encrypt memiliki masa berlaku terbatas, jadi renewal otomatis sangat penting.</p>
+<p>Cek timer renewal:</p>
+
+<pre><code>systemctl list-timers | grep certbot</code></pre>
+
+<p>Test simulasi renewal:</p>
+
+<pre><code>sudo certbot renew --dry-run</code></pre>
+
+<p>Jika dry-run sukses, berarti sistem renewal SSL sudah aman.</p>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. Certbot gagal karena domain belum mengarah ke VPS</h4>
+<p>Cek DNS:</p>
+
+<pre><code>nslookup domainkita.com 8.8.8.8
+nslookup www.domainkita.com 8.8.8.8</code></pre>
+
+<p>Pastikan hasilnya adalah IP public VPS.</p>
+
+<h4>2. Error connection refused atau timeout</h4>
+<p>Kemungkinan port 80 atau 443 belum terbuka.</p>
+
+<pre><code>sudo ufw status
+sudo ufw allow 80
+sudo ufw allow 443</code></pre>
+
+<p>Jika provider VPS punya firewall tambahan di dashboard, buka juga port 80 dan 443 dari dashboard provider.</p>
+
+<h4>3. Error Nginx config invalid</h4>
+<p>Jangan lanjut sebelum Nginx valid.</p>
+
+<pre><code>sudo nginx -t</code></pre>
+
+<p>Buka file config:</p>
+
+<pre><code>sudo nano /etc/nginx/sites-available/lms</code></pre>
+
+<p>Perbaiki error seperti tanda titik koma hilang, kurung kurawal tidak lengkap, atau server_name salah.</p>
+
+<h4>4. HTTPS berhasil tetapi aplikasi menampilkan 502 Bad Gateway</h4>
+<p>Artinya SSL dan Nginx sudah aktif, tetapi aplikasi LMS di port 3000 belum berjalan.</p>
+
+<pre><code>cd /var/www/lms
+curl http://localhost:3000
+npm run start</code></pre>
+
+<h4>5. Browser masih membuka HTTP</h4>
+<p>Coba cek redirect:</p>
+
+<pre><code>curl -I http://domainkita.com</code></pre>
+
+<p>Jika belum redirect ke HTTPS, jalankan ulang Certbot:</p>
+
+<pre><code>sudo certbot --nginx -d domainkita.com -d www.domainkita.com</code></pre>
+
+<p>Lalu pilih opsi redirect.</p>
+
+<h4>6. Terlalu sering gagal generate SSL</h4>
+<p>Let's Encrypt memiliki limit percobaan. Jangan menjalankan perintah berkali-kali tanpa memperbaiki penyebab error.</p>
+<p>Gunakan pengecekan ini dulu:</p>
+
+<pre><code>sudo nginx -t
+sudo systemctl status nginx
+sudo ufw status
+nslookup domainkita.com 8.8.8.8</code></pre>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms
+nslookup domainkita.com 8.8.8.8
+nslookup www.domainkita.com 8.8.8.8
+sudo systemctl status nginx
+sudo nginx -t
+sudo ufw status
+sudo ufw allow 80
+sudo ufw allow 443
+certbot --version
+sudo apt install certbot python3-certbot-nginx -y
+sudo certbot --nginx -d domainkita.com -d www.domainkita.com
+curl -I https://domainkita.com
+sudo certbot renew --dry-run</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita mengaktifkan HTTPS menggunakan Certbot dan Let's Encrypt.</p>
+<p>Jika proses berhasil, LMS sudah bisa diakses dengan koneksi aman melalui <code>https://domainkita.com</code>.</p>
+<p>Setelah HTTPS aktif, tahap berikutnya adalah menstandarkan canonical domain dengan redirect non-www ke www.</p>`,
+          },
+          {
+            id: "l2l-28-video",
+            title: "Video Aktifkan HTTPS",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami cara mengaktifkan HTTPS dengan Certbot dan Let's Encrypt.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "35 min",   
           },
         ],
       },
@@ -3251,13 +5101,13 @@ ls -ld node_modules</code></pre>
     id: "l2l-sec-6",
     title: "Module 6 — Running with PM2",
     summary:
-      "Menjalankan LMS secara stabil di background dan tetap hidup setelah reboot.",
+          "Menginstall PM2 sebagai process manager agar aplikasi LMS Node.js bisa berjalan stabil di background pada VPS.",  
     order: 6,
     lessons: [
       {
         id: "l2l-29",
         title: "Install PM2",
-        duration: "6 min",
+        duration: "30 min",
         summary:
           "Memasang process manager untuk menjaga aplikasi tetap aktif.",
         order: 1,
@@ -3266,63 +5116,967 @@ ls -ld node_modules</code></pre>
             id: "l2l-29-html",
             title: "Install PM2",
             type: "html",
-            description: "Process manager untuk Node.js app production.",
+            description:
+              "Memahami fungsi PM2, cara install, cek status, dan troubleshooting instalasi PM2 untuk aplikasi LMS production.",   
             htmlContent:
-              "<h2>Install PM2</h2><pre><code>npm install -g pm2</code></pre>",
+              `<h2>Install PM2</h2>
+<p>Pada lesson ini, kita akan menginstall <strong>PM2</strong>, yaitu process manager untuk aplikasi Node.js.</p>
+<p>PM2 membantu aplikasi LMS tetap berjalan di background walaupun terminal PuTTY ditutup.</p>
+
+<h3>Apa itu PM2?</h3>
+<p><strong>PM2</strong> adalah tool untuk menjalankan, memonitor, restart, dan menjaga aplikasi Node.js tetap hidup di server.</p>
+<p>Tanpa PM2, jika kita menjalankan LMS dengan <code>npm run start</code>, aplikasi hanya berjalan selama terminal masih aktif.</p>
+<p>Dengan PM2, aplikasi bisa tetap berjalan di background seperti service production.</p>
+
+<h3>Kenapa PM2 penting?</h3>
+<ul>
+  <li>Aplikasi tetap berjalan walaupun PuTTY ditutup.</li>
+  <li>Bisa melihat status aplikasi dengan mudah.</li>
+  <li>Bisa melihat log error.</li>
+  <li>Bisa restart aplikasi tanpa menjalankan command panjang.</li>
+  <li>Bisa disiapkan agar otomatis hidup setelah VPS reboot.</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<p>Install PM2 dilakukan secara global di VPS, jadi command install boleh dijalankan dari folder mana saja.</p>
+<p>Namun agar course ini konsisten, kita mulai dari folder project LMS:</p>
+
+<pre><code>cd /var/www/lms
+pwd</code></pre>
+
+<p>Jika folder belum ada, cek dulu:</p>
+
+<pre><code>ls -la /var/www</code></pre>
+
+<h3>Langkah 1 — Pastikan Node.js tersedia</h3>
+<p>PM2 membutuhkan Node.js dan npm. Cek dulu:</p>
+
+<pre><code>node -v
+npm -v</code></pre>
+
+<p>Jika versi Node.js dan npm muncul, berarti aman.</p>
+<p>Jika belum tersedia, install Node.js LTS terlebih dahulu sesuai lesson sebelumnya.</p>
+
+<h3>Langkah 2 — Install PM2 secara global</h3>
+<p>Command ini dijalankan di VPS:</p>
+
+<pre><code>sudo npm install -g pm2</code></pre>
+
+<p>Flag <code>-g</code> berarti PM2 diinstall secara global, sehingga command <code>pm2</code> bisa dipakai dari folder mana saja.</p>
+
+<h3>Langkah 3 — Cek versi PM2</h3>
+<p>Setelah install selesai, cek apakah PM2 sudah aktif:</p>
+
+<pre><code>pm2 -v</code></pre>
+
+<p>Jika muncul nomor versi, berarti instalasi berhasil.</p>
+
+<h3>Langkah 4 — Cek status PM2</h3>
+<p>Untuk melihat daftar aplikasi yang dikelola PM2:</p>
+
+<pre><code>pm2 status</code></pre>
+
+<p>Jika belum ada aplikasi yang dijalankan, tabel PM2 bisa kosong. Itu normal.</p>
+
+<h3>Langkah 5 — Cek lokasi command PM2</h3>
+<p>Untuk memastikan command PM2 dikenali oleh sistem:</p>
+
+<pre><code>which pm2</code></pre>
+
+<p>Jika muncul path seperti <code>/usr/bin/pm2</code> atau path lain, berarti PM2 sudah dikenali.</p>
+
+<h3>Langkah 6 — Test bantuan command PM2</h3>
+<p>Command ini berguna untuk melihat daftar perintah PM2:</p>
+
+<pre><code>pm2 --help</code></pre>
+
+<p>Untuk keluar dari tampilan panjang di terminal, tekan <code>q</code> jika terminal masuk ke mode viewer.</p>
+
+<h3>Langkah 7 — Pastikan aplikasi LMS bisa dibuild dan distart</h3>
+<p>Sebelum menjalankan aplikasi dengan PM2, pastikan aplikasi bisa berjalan normal.</p>
+<p>Command ini dijalankan di folder project LMS:</p>
+
+<pre><code>cd /var/www/lms
+npm install
+npm run build
+npm run start</code></pre>
+
+<p>Jika <code>npm run start</code> berhasil, hentikan dulu dengan <code>CTRL + C</code>. Pada lesson berikutnya, kita akan menjalankannya dengan PM2.</p>
+
+<h3>Catatan untuk pemula</h3>
+<p>PM2 bukan pengganti Nginx.</p>
+<p>PM2 bertugas menjaga aplikasi Node.js tetap hidup. Nginx bertugas menerima request dari domain dan meneruskannya ke aplikasi.</p>
+
+<h3>Alur production yang kita bangun</h3>
+
+<pre><code>Browser
+  ↓
+Domain + HTTPS
+  ↓
+Nginx Reverse Proxy
+  ↓
+PM2
+  ↓
+LMS Next.js di localhost:3000</code></pre>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. npm: command not found</h4>
+<p>Artinya Node.js/npm belum terinstall.</p>
+<p>Cek:</p>
+
+<pre><code>node -v
+npm -v</code></pre>
+
+<p>Jika tidak muncul versi, install Node.js LTS terlebih dahulu.</p>
+
+<h4>2. pm2: command not found setelah install</h4>
+<p>Coba cek lokasi global npm:</p>
+
+<pre><code>npm root -g
+npm bin -g</code></pre>
+
+<p>Lalu coba install ulang:</p>
+
+<pre><code>sudo npm install -g pm2
+pm2 -v</code></pre>
+
+<h4>3. Permission denied saat install PM2</h4>
+<p>Gunakan <code>sudo</code> karena PM2 diinstall secara global:</p>
+
+<pre><code>sudo npm install -g pm2</code></pre>
+
+<h4>4. Versi Node.js terlalu lama</h4>
+<p>Jika aplikasi Next.js tidak kompatibel, cek versi Node.js:</p>
+
+<pre><code>node -v</code></pre>
+
+<p>Gunakan Node.js LTS yang sesuai kebutuhan project.</p>
+
+<h4>5. npm install gagal</h4>
+<p>Pastikan command dijalankan di folder project:</p>
+
+<pre><code>cd /var/www/lms
+ls -la</code></pre>
+
+<p>Pastikan ada file <code>package.json</code>.</p>
+
+<h4>6. npm run build gagal</h4>
+<p>Build error biasanya berasal dari source code aplikasi, dependency, atau environment variable yang belum lengkap.</p>
+<p>Cek error paling atas dan paling bawah di terminal, lalu perbaiki sesuai pesan error.</p>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms
+node -v
+npm -v
+sudo npm install -g pm2
+pm2 -v
+pm2 status
+which pm2
+pm2 --help
+npm install
+npm run build
+npm run start</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita menginstall PM2 sebagai process manager untuk aplikasi LMS.</p>
+<p>PM2 akan membantu aplikasi berjalan lebih stabil di VPS dan tidak bergantung pada terminal PuTTY yang sedang terbuka.</p>
+<p>Di lesson berikutnya, kita akan menjalankan LMS menggunakan PM2.</p>`,
+          },
+          {
+            id: "l2l-29-video",
+            title: "Video Install PM2",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami instalasi PM2 sebagai process manager aplikasi LMS di VPS.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "30 min", 
           },
         ],
       },
       {
         id: "l2l-30",
         title: "Run app dengan PM2",
-        duration: "8 min",
+        duration: "35 min",
         summary:
-          "Menjalankan LMS menggunakan PM2 agar tidak bergantung pada terminal aktif.",
+          "Menjalankan LMS dengan PM2 dari folder frontend agar aplikasi tetap aktif di background, bisa dicek statusnya, dan tidak mati saat PuTTY ditutup.",  
         order: 2,
         materials: [
           {
             id: "l2l-30-html",
             title: "Run LMS via PM2",
             type: "html",
-            description: "Menjalankan Next.js app dengan PM2.",
+            description:
+              "Menjalankan aplikasi LMS Next.js menggunakan PM2, mengecek status, log, restart, stop, dan troubleshooting error umum.",  
             htmlContent:
-              "<h2>Run app</h2><pre><code>pm2 start npm --name lms -- start</code></pre><p>Nama process bisa disesuaikan, tetapi <code>lms</code> cukup jelas untuk project ini.</p>",
+              `<h2>Run LMS via PM2</h2>
+<p>Pada lesson ini, kita akan menjalankan LMS menggunakan <strong>PM2</strong> agar aplikasi tetap hidup di background.</p>
+<p>Dengan PM2, kita tidak perlu membiarkan terminal PuTTY terus terbuka hanya untuk menjaga aplikasi tetap berjalan.</p>
+
+<h3>Target lesson ini</h3>
+<ul>
+  <li>Menjalankan LMS dengan PM2.</li>
+  <li>Memberi nama process agar mudah dikenali.</li>
+  <li>Mengecek status aplikasi.</li>
+  <li>Melihat log jika terjadi error.</li>
+  <li>Restart atau stop aplikasi dengan aman.</li>
+</ul>
+
+<h3>Folder tempat menjalankan command</h3>
+<p>Command PM2 untuk menjalankan LMS wajib dijalankan dari folder <strong>frontend</strong>, karena file <code>package.json</code> aplikasi berada di sana.</p>
+
+<pre><code>cd /var/www/lms/frontend
+pwd</code></pre>
+
+<p>Cek isi folder:</p>
+
+<pre><code>ls -la</code></pre>
+
+<p>Pastikan ada file:</p>
+<ul>
+  <li><code>package.json</code></li>
+  <li><code>package-lock.json</code> jika memakai npm lock file</li>
+  <li>folder <code>.next</code> jika build production sudah pernah dijalankan</li>
+</ul>
+
+<h3>Langkah 1 — Pastikan PM2 sudah terinstall</h3>
+<p>Command ini boleh dijalankan dari folder mana saja, tetapi kita tetap dari folder frontend:</p>
+
+<pre><code>cd /var/www/lms/frontend
+pm2 -v</code></pre>
+
+<p>Jika muncul versi PM2, berarti PM2 sudah siap.</p>
+<p>Jika muncul <code>pm2: command not found</code>, install dulu:</p>
+
+<pre><code>sudo npm install -g pm2</code></pre>
+
+<p>Cek ulang:</p>
+
+<pre><code>pm2 -v</code></pre>
+
+<h3>Langkah 2 — Pastikan aplikasi sudah bisa jalan manual</h3>
+<p>Sebelum masuk PM2, pastikan aplikasi bisa dijalankan manual.</p>
+
+<pre><code>cd /var/www/lms/frontend
+npm run build
+npm run start</code></pre>
+
+<p>Jika berhasil, hentikan dengan:</p>
+
+<pre><code>CTRL + C</code></pre>
+
+<p>Setelah itu baru kita jalankan dengan PM2.</p>
+
+<h3>Langkah 3 — Jalankan LMS dengan PM2</h3>
+<p>Command ini dijalankan dari folder frontend:</p>
+
+<pre><code>cd /var/www/lms/frontend
+pm2 start npm --name lms -- start</code></pre>
+
+<p>Penjelasan command:</p>
+<ul>
+  <li><code>pm2 start npm</code> artinya PM2 menjalankan perintah npm.</li>
+  <li><code>--name lms</code> memberi nama process menjadi <code>lms</code>.</li>
+  <li><code>-- start</code> berarti menjalankan script <code>start</code> dari <code>package.json</code>.</li>
+</ul>
+
+<h3>Langkah 4 — Cek status aplikasi</h3>
+<p>Setelah dijalankan, cek status PM2:</p>
+
+<pre><code>pm2 status</code></pre>
+
+<p>Jika berhasil, akan muncul process bernama <code>lms</code> dengan status <code>online</code>.</p>
+
+<h3>Langkah 5 — Cek apakah port 3000 aktif</h3>
+<p>Command ini dijalankan di VPS:</p>
+
+<pre><code>ss -tulpn | grep 3000</code></pre>
+
+<p>Jika command <code>ss</code> belum tersedia, install tool jaringan berikut:</p>
+
+<pre><code>sudo apt update
+sudo apt install iproute2 -y</code></pre>
+
+<p>Cek ulang:</p>
+
+<pre><code>ss -tulpn | grep 3000</code></pre>
+
+<h3>Langkah 6 — Test aplikasi dari VPS</h3>
+<p>Command ini dijalankan di VPS:</p>
+
+<pre><code>curl http://localhost:3000</code></pre>
+
+<p>Jika <code>curl</code> belum ada:</p>
+
+<pre><code>sudo apt update
+sudo apt install curl -y</code></pre>
+
+<p>Jika output HTML muncul, aplikasi LMS sudah berjalan.</p>
+
+<h3>Langkah 7 — Test dari domain</h3>
+<p>Jika Nginx reverse proxy dan HTTPS sudah aktif, buka dari browser PC:</p>
+
+<pre><code>https://domainkita.com</code></pre>
+
+<p>Jika halaman LMS tampil, berarti alurnya sudah lengkap:</p>
+
+<pre><code>Browser
+  ↓
+Domain + HTTPS
+  ↓
+Nginx
+  ↓
+PM2
+  ↓
+LMS di localhost:3000</code></pre>
+
+<h3>Langkah 8 — Melihat log aplikasi</h3>
+<p>Jika aplikasi error atau tidak tampil, lihat log PM2:</p>
+
+<pre><code>pm2 logs lms</code></pre>
+
+<p>Untuk keluar dari tampilan log, tekan:</p>
+
+<pre><code>CTRL + C</code></pre>
+
+<h3>Langkah 9 — Restart aplikasi</h3>
+<p>Jika kita baru melakukan perubahan code atau rebuild, restart process:</p>
+
+<pre><code>pm2 restart lms</code></pre>
+
+<p>Cek lagi:</p>
+
+<pre><code>pm2 status</code></pre>
+
+<h3>Langkah 10 — Stop aplikasi jika diperlukan</h3>
+<p>Jika ingin menghentikan aplikasi sementara:</p>
+
+<pre><code>pm2 stop lms</code></pre>
+
+<p>Untuk menjalankan lagi:</p>
+
+<pre><code>pm2 start lms</code></pre>
+
+<h3>Langkah 11 — Hapus process jika salah konfigurasi</h3>
+<p>Jika process PM2 dibuat dari folder yang salah atau command salah, hapus dulu:</p>
+
+<pre><code>pm2 delete lms</code></pre>
+
+<p>Lalu jalankan ulang dari folder yang benar:</p>
+
+<pre><code>cd /var/www/lms/frontend
+pm2 start npm --name lms -- start</code></pre>
+
+<h3>Catatan penting</h3>
+<p>PM2 menjaga aplikasi tetap berjalan, tetapi pada lesson ini kita belum mengatur auto-start setelah reboot.</p>
+<p>Artinya, jika VPS direstart, process PM2 perlu disiapkan agar otomatis hidup kembali. Itu akan dibahas di lesson berikutnya.</p>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. Error: package.json tidak ditemukan</h4>
+<p>Artinya command dijalankan dari folder yang salah.</p>
+
+<pre><code>cd /var/www/lms/frontend
+ls -la</code></pre>
+
+<p>Pastikan file <code>package.json</code> ada di folder tersebut.</p>
+
+<h4>2. PM2 status menunjukkan errored</h4>
+<p>Lihat log:</p>
+
+<pre><code>pm2 logs lms</code></pre>
+
+<p>Biasanya penyebabnya adalah build belum dibuat, dependency belum lengkap, port bentrok, atau environment variable belum tersedia.</p>
+
+<h4>3. Port 3000 sudah dipakai</h4>
+<p>Cek process yang memakai port 3000:</p>
+
+<pre><code>ss -tulpn | grep 3000</code></pre>
+
+<p>Jika ada process lama, stop dari PM2:</p>
+
+<pre><code>pm2 status
+pm2 stop lms</code></pre>
+
+<p>Jika process bukan dari PM2, cek PID-nya dari output <code>ss</code>, lalu tangani dengan hati-hati.</p>
+
+<h4>4. 502 Bad Gateway dari Nginx</h4>
+<p>Artinya Nginx aktif, tetapi aplikasi LMS di belakangnya tidak berjalan atau tidak bisa diakses.</p>
+
+<pre><code>pm2 status
+curl http://localhost:3000
+pm2 logs lms</code></pre>
+
+<p>Jika process belum online:</p>
+
+<pre><code>cd /var/www/lms/frontend
+pm2 restart lms</code></pre>
+
+<h4>5. Setelah PuTTY ditutup, aplikasi masih jalan atau tidak?</h4>
+<p>Jika dijalankan dengan PM2 dan statusnya <code>online</code>, aplikasi tetap berjalan walaupun PuTTY ditutup.</p>
+
+<pre><code>pm2 status</code></pre>
+
+<h4>6. npm run build gagal</h4>
+<p>PM2 tidak akan menyelesaikan error build. Build harus diperbaiki dulu.</p>
+
+<pre><code>cd /var/www/lms/frontend
+npm run build</code></pre>
+
+<p>Baca error paling atas dan paling bawah, lalu perbaiki source code atau dependency sesuai pesan error.</p>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms/frontend
+pm2 -v
+sudo npm install -g pm2
+npm run build
+pm2 start npm --name lms -- start
+pm2 status
+ss -tulpn | grep 3000
+curl http://localhost:3000
+pm2 logs lms
+pm2 restart lms
+pm2 stop lms
+pm2 start lms
+pm2 delete lms</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita menjalankan LMS menggunakan PM2 agar aplikasi tetap hidup di background.</p>
+<p>Jika <code>pm2 status</code> menunjukkan process <code>lms</code> dengan status <code>online</code>, maka aplikasi sudah berjalan dengan benar.</p>
+<p>Langkah berikutnya adalah membuat process PM2 otomatis hidup kembali saat VPS reboot.</p>`,
+          },
+          {
+            id: "l2l-30-video",
+            title: "Video Run LMS via PM2",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami cara menjalankan aplikasi LMS dengan PM2 di VPS.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "35 min",     
           },
         ],
       },
       {
         id: "l2l-31",
         title: "Auto start saat reboot",
-        duration: "7 min",
+        duration: "32 min",
         summary:
-          "Memastikan LMS otomatis hidup kembali ketika server restart.",
+          "Mengatur PM2 startup agar process LMS otomatis hidup kembali setelah VPS restart atau reboot.",     
         order: 3,
         materials: [
           {
             id: "l2l-31-html",
             title: "PM2 Startup",
             type: "html",
-            description: "Menyimpan konfigurasi process PM2.",
+            description:
+              "Mengaktifkan PM2 startup service, menyimpan process list, mengecek status systemd, dan troubleshooting auto-start.",    
             htmlContent:
-              "<h2>Auto start reboot</h2><pre><code>pm2 startup\npm2 save</code></pre>",
+              `<h2>PM2 Startup</h2>
+<p>Pada lesson ini, kita akan mengatur agar aplikasi LMS yang dijalankan dengan PM2 bisa otomatis hidup kembali setelah VPS restart atau reboot.</p>
+<p>Ini penting karena server production tidak boleh bergantung pada kita untuk menjalankan ulang aplikasi secara manual.</p>
+
+<h3>Kenapa PM2 Startup penting?</h3>
+<p>Ketika VPS reboot, semua process yang berjalan di memory akan berhenti. Jika PM2 belum dikonfigurasi untuk startup otomatis, aplikasi LMS bisa mati setelah server restart.</p>
+<p>Dengan PM2 Startup, flow production kita menjadi lebih aman:</p>
+
+<pre><code>VPS reboot
+  ↓
+systemd menjalankan PM2
+  ↓
+PM2 restore process list
+  ↓
+LMS hidup kembali otomatis</code></pre>
+
+<h3>Folder kerja command</h3>
+<p>Command <code>pm2 startup</code> dan <code>pm2 save</code> boleh dijalankan dari folder mana saja, karena ini mengatur service PM2 di level sistem.</p>
+<p>Namun agar konsisten dengan course ini, kita mulai dari folder frontend LMS:</p>
+
+<pre><code>cd /var/www/lms/frontend
+pwd</code></pre>
+
+<p>Jika folder belum ada, cek struktur project:</p>
+
+<pre><code>ls -la /var/www/lms
+ls -la /var/www/lms/frontend</code></pre>
+
+<h3>Langkah 1 — Pastikan PM2 sudah terinstall</h3>
+<p>Command ini dijalankan di VPS:</p>
+
+<pre><code>pm2 -v</code></pre>
+
+<p>Jika muncul versi PM2, berarti PM2 sudah tersedia.</p>
+<p>Jika muncul <code>pm2: command not found</code>, install dulu:</p>
+
+<pre><code>sudo npm install -g pm2</code></pre>
+
+<p>Lalu cek ulang:</p>
+
+<pre><code>pm2 -v</code></pre>
+
+<h3>Langkah 2 — Pastikan process LMS sudah online</h3>
+<p>Sebelum menyimpan startup, pastikan aplikasi LMS sudah berjalan di PM2.</p>
+
+<pre><code>pm2 status</code></pre>
+
+<p>Pastikan ada process bernama <code>lms</code> dengan status <code>online</code>.</p>
+
+<p>Jika belum ada process LMS, jalankan dari folder frontend:</p>
+
+<pre><code>cd /var/www/lms/frontend
+pm2 start npm --name lms -- start
+pm2 status</code></pre>
+
+<h3>Langkah 3 — Generate command startup PM2</h3>
+<p>Jalankan command berikut di VPS:</p>
+
+<pre><code>pm2 startup</code></pre>
+
+<p>PM2 akan menampilkan command lanjutan yang biasanya diawali dengan <code>sudo env</code>.</p>
+<p>Contohnya seperti ini:</p>
+
+<pre><code>sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u deploy --hp /home/deploy</code></pre>
+
+<p><strong>Penting:</strong> command yang muncul bisa berbeda tergantung user dan lokasi Node.js di VPS kita. Jadi jangan asal copy dari contoh. Copy command yang benar-benar muncul di terminal kita.</p>
+
+<h3>Langkah 4 — Jalankan command yang diberikan PM2</h3>
+<p>Copy command hasil dari <code>pm2 startup</code>, lalu jalankan.</p>
+<p>Contoh:</p>
+
+<pre><code>sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u deploy --hp /home/deploy</code></pre>
+
+<p>Jika berhasil, PM2 akan membuat service systemd agar PM2 bisa hidup otomatis saat server boot.</p>
+
+<h3>Langkah 5 — Simpan process list PM2</h3>
+<p>Setelah startup dibuat, simpan daftar process yang sedang berjalan:</p>
+
+<pre><code>pm2 save</code></pre>
+
+<p>Command ini menyimpan process list saat ini. Jadi ketika VPS reboot, PM2 tahu process apa saja yang harus dihidupkan kembali.</p>
+
+<h3>Langkah 6 — Cek service PM2 di systemd</h3>
+<p>Nama service biasanya mengikuti user yang menjalankan PM2, misalnya <code>pm2-deploy</code>.</p>
+
+<pre><code>systemctl list-units | grep pm2</code></pre>
+
+<p>Jika terlihat service seperti <code>pm2-deploy.service</code>, cek statusnya:</p>
+
+<pre><code>sudo systemctl status pm2-deploy</code></pre>
+
+<p>Jika user VPS kita bukan <code>deploy</code>, nama service bisa berbeda, misalnya <code>pm2-root</code> atau <code>pm2-username</code>.</p>
+
+<h3>Langkah 7 — Test reboot secara hati-hati</h3>
+<p>Jika semua sudah siap, kita bisa test dengan reboot VPS.</p>
+<p>Sebelum reboot, pastikan kita masih punya akses login ke VPS.</p>
+
+<pre><code>sudo reboot</code></pre>
+
+<p>Setelah VPS hidup kembali, login ulang via PuTTY, lalu cek:</p>
+
+<pre><code>pm2 status
+curl http://localhost:3000
+sudo systemctl status nginx</code></pre>
+
+<p>Jika LMS tetap online, berarti PM2 Startup berhasil.</p>
+
+<h3>Langkah 8 — Test dari browser</h3>
+<p>Buka domain dari browser PC:</p>
+
+<pre><code>https://domainkita.com</code></pre>
+
+<p>Jika LMS tampil setelah reboot, berarti alur production sudah berjalan baik.</p>
+
+<h3>Perbedaan pm2 startup dan pm2 save</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Command</th>
+      <th>Fungsi</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>pm2 startup</code></td>
+      <td>Membuat service agar PM2 hidup saat VPS boot.</td>
+    </tr>
+    <tr>
+      <td><code>pm2 save</code></td>
+      <td>Menyimpan daftar process yang harus dihidupkan kembali.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. Setelah reboot, PM2 hidup tetapi process LMS tidak muncul</h4>
+<p>Kemungkinan kita belum menjalankan <code>pm2 save</code>.</p>
+
+<pre><code>pm2 status
+cd /var/www/lms/frontend
+pm2 start npm --name lms -- start
+pm2 save</code></pre>
+
+<h4>2. pm2 startup meminta command sudo yang panjang</h4>
+<p>Itu normal. Jalankan command yang diberikan oleh PM2, bukan command contoh secara sembarangan.</p>
+
+<pre><code>pm2 startup</code></pre>
+
+<p>Lalu copy command yang muncul di terminal.</p>
+
+<h4>3. systemctl status pm2-deploy tidak ditemukan</h4>
+<p>Nama service bisa berbeda tergantung user.</p>
+
+<pre><code>systemctl list-units | grep pm2</code></pre>
+
+<p>Gunakan nama service yang muncul dari hasil command tersebut.</p>
+
+<h4>4. 502 Bad Gateway setelah reboot</h4>
+<p>Artinya Nginx aktif, tetapi aplikasi LMS belum hidup atau belum listen di port 3000.</p>
+
+<pre><code>pm2 status
+pm2 logs lms
+curl http://localhost:3000</code></pre>
+
+<p>Jika process belum ada:</p>
+
+<pre><code>cd /var/www/lms/frontend
+pm2 start npm --name lms -- start
+pm2 save</code></pre>
+
+<h4>5. PM2 memakai user yang salah</h4>
+<p>Sebaiknya PM2 untuk aplikasi dijalankan oleh user deploy, bukan root, agar lebih rapi dan aman.</p>
+<p>Cek user aktif:</p>
+
+<pre><code>whoami</code></pre>
+
+<p>Jika ternyata sedang login sebagai root, pertimbangkan login ulang sebagai user deploy lalu setup PM2 dari user deploy.</p>
+
+<h4>6. Aplikasi tidak otomatis update setelah git pull</h4>
+<p>PM2 startup hanya menghidupkan process. Ia tidak otomatis menjalankan <code>git pull</code>, <code>npm install</code>, atau <code>npm run build</code>.</p>
+<p>Setelah update code, workflow manual umumnya:</p>
+
+<pre><code>cd /var/www/lms/frontend
+git pull
+npm install
+npm run build
+pm2 restart lms
+pm2 save</code></pre>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms/frontend
+pm2 -v
+pm2 status
+pm2 startup
+# jalankan command sudo yang diberikan oleh PM2
+pm2 save
+systemctl list-units | grep pm2
+sudo systemctl status pm2-deploy
+sudo reboot
+pm2 status
+curl http://localhost:3000
+sudo systemctl status nginx</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita mengatur PM2 agar otomatis hidup setelah VPS reboot.</p>
+<p>Dua command paling penting adalah:</p>
+
+<pre><code>pm2 startup
+pm2 save</code></pre>
+
+<p>Jika setelah reboot <code>pm2 status</code> masih menunjukkan process <code>lms</code> dalam keadaan <code>online</code>, berarti konfigurasi startup berhasil.</p>`,
+          },
+          {
+            id: "l2l-31-video",
+            title: "Video PM2 Startup",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami cara membuat PM2 otomatis menjalankan LMS setelah VPS reboot.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "32 min",  
           },
         ],
       },
       {
         id: "l2l-32",
         title: "Monitoring process PM2",
-        duration: "8 min",
+        duration: "32 min",
         summary:
-          "Melihat status dan log aplikasi ketika terjadi masalah runtime.",
+          "Melihat status, log, resource usage, restart history, dan error runtime aplikasi LMS yang berjalan melalui PM2.",     
         order: 4,
         materials: [
           {
             id: "l2l-32-html",
             title: "Monitoring PM2",
             type: "html",
-            description: "Status dan log dasar PM2.",
+            description:
+              "Monitoring aplikasi LMS dengan PM2 status, logs, monit, restart, flush log, dan troubleshooting error runtime.",  
             htmlContent:
-              "<h2>Monitoring</h2><pre><code>pm2 status\npm2 logs</code></pre><p>Ini penting ketika aplikasi tidak bisa diakses atau restart berulang.</p>",
+              `<h2>Monitoring PM2</h2>
+<p>Pada lesson ini, kita akan belajar memonitor aplikasi LMS yang berjalan menggunakan PM2.</p>
+<p>Monitoring penting karena aplikasi production tidak cukup hanya “berjalan”. Kita juga perlu tahu apakah statusnya online, error, restart berulang, atau memakan resource terlalu besar.</p>
+
+<h3>Kenapa monitoring PM2 penting?</h3>
+<ul>
+  <li>Mengetahui apakah LMS masih berjalan atau mati.</li>
+  <li>Melihat error runtime dari aplikasi.</li>
+  <li>Mengetahui apakah aplikasi restart berulang.</li>
+  <li>Mengecek penggunaan CPU dan memory.</li>
+  <li>Membantu mencari penyebab <code>502 Bad Gateway</code>.</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<p>Command monitoring PM2 seperti <code>pm2 status</code>, <code>pm2 logs</code>, dan <code>pm2 monit</code> boleh dijalankan dari folder mana saja.</p>
+<p>Namun agar konsisten dengan course ini, kita mulai dari folder frontend LMS:</p>
+
+<pre><code>cd /var/www/lms/frontend
+pwd</code></pre>
+
+<p>Jika folder belum ada, cek struktur project:</p>
+
+<pre><code>ls -la /var/www/lms
+ls -la /var/www/lms/frontend</code></pre>
+
+<h3>Langkah 1 — Cek apakah PM2 tersedia</h3>
+<p>Command ini dijalankan di VPS:</p>
+
+<pre><code>pm2 -v</code></pre>
+
+<p>Jika muncul versi PM2, berarti PM2 sudah tersedia.</p>
+<p>Jika muncul <code>pm2: command not found</code>, install dulu:</p>
+
+<pre><code>sudo npm install -g pm2</code></pre>
+
+<p>Lalu cek ulang:</p>
+
+<pre><code>pm2 -v</code></pre>
+
+<h3>Langkah 2 — Cek status process</h3>
+<p>Command paling dasar untuk monitoring PM2 adalah:</p>
+
+<pre><code>pm2 status</code></pre>
+
+<p>Jika LMS berjalan normal, kita akan melihat process bernama <code>lms</code> dengan status <code>online</code>.</p>
+
+<p>Status yang umum:</p>
+<ul>
+  <li><code>online</code> — aplikasi berjalan.</li>
+  <li><code>stopped</code> — aplikasi berhenti.</li>
+  <li><code>errored</code> — aplikasi gagal berjalan.</li>
+  <li><code>launching</code> — aplikasi sedang proses start.</li>
+</ul>
+
+<h3>Langkah 3 — Melihat log aplikasi</h3>
+<p>Untuk melihat log aplikasi LMS:</p>
+
+<pre><code>pm2 logs lms</code></pre>
+
+<p>Jika ingin melihat semua log dari semua process PM2:</p>
+
+<pre><code>pm2 logs</code></pre>
+
+<p>Untuk keluar dari mode log, tekan:</p>
+
+<pre><code>CTRL + C</code></pre>
+
+<h3>Langkah 4 — Melihat log dalam jumlah terbatas</h3>
+<p>Jika log terlalu panjang, gunakan jumlah baris tertentu:</p>
+
+<pre><code>pm2 logs lms --lines 100</code></pre>
+
+<p>Command ini menampilkan sekitar 100 baris log terakhir.</p>
+
+<h3>Langkah 5 — Monitoring resource realtime</h3>
+<p>PM2 menyediakan dashboard sederhana di terminal:</p>
+
+<pre><code>pm2 monit</code></pre>
+
+<p>Di sini kita bisa melihat CPU, memory, dan log secara realtime.</p>
+<p>Untuk keluar dari tampilan monitoring, tekan:</p>
+
+<pre><code>CTRL + C</code></pre>
+
+<h3>Langkah 6 — Cek detail process LMS</h3>
+<p>Untuk melihat detail process tertentu:</p>
+
+<pre><code>pm2 show lms</code></pre>
+
+<p>Informasi yang bisa dilihat antara lain:</p>
+<ul>
+  <li>Status process</li>
+  <li>Script path</li>
+  <li>Working directory</li>
+  <li>Restart count</li>
+  <li>Log path</li>
+  <li>Environment</li>
+</ul>
+
+<h3>Langkah 7 — Cek apakah port 3000 aktif</h3>
+<p>PM2 bisa online, tetapi kita tetap perlu memastikan aplikasi benar-benar listen di port yang benar.</p>
+
+<pre><code>ss -tulpn | grep 3000</code></pre>
+
+<p>Jika command <code>ss</code> belum tersedia:</p>
+
+<pre><code>sudo apt update
+sudo apt install iproute2 -y</code></pre>
+
+<p>Lalu cek ulang:</p>
+
+<pre><code>ss -tulpn | grep 3000</code></pre>
+
+<h3>Langkah 8 — Test aplikasi dari VPS</h3>
+<p>Command ini dijalankan di VPS:</p>
+
+<pre><code>curl http://localhost:3000</code></pre>
+
+<p>Jika <code>curl</code> belum tersedia:</p>
+
+<pre><code>sudo apt update
+sudo apt install curl -y</code></pre>
+
+<p>Jika output HTML muncul, aplikasi berjalan di port internal.</p>
+
+<h3>Langkah 9 — Test dari domain</h3>
+<p>Jika Nginx dan HTTPS sudah aktif, cek domain:</p>
+
+<pre><code>curl -I https://domainkita.com</code></pre>
+
+<p>Dari browser PC, buka:</p>
+
+<pre><code>https://domainkita.com</code></pre>
+
+<h3>Langkah 10 — Restart aplikasi dari PM2</h3>
+<p>Jika aplikasi error, kita bisa restart process:</p>
+
+<pre><code>pm2 restart lms</code></pre>
+
+<p>Lalu cek status:</p>
+
+<pre><code>pm2 status
+pm2 logs lms --lines 50</code></pre>
+
+<h3>Langkah 11 — Membersihkan log lama</h3>
+<p>Jika log sudah terlalu panjang, kita bisa membersihkan log PM2:</p>
+
+<pre><code>pm2 flush</code></pre>
+
+<p>Setelah itu, log akan mulai mencatat dari kondisi baru.</p>
+
+<h3>Langkah 12 — Simpan process list setelah perubahan</h3>
+<p>Jika kita melakukan perubahan penting pada process PM2, simpan process list:</p>
+
+<pre><code>pm2 save</code></pre>
+
+<p>Ini membantu PM2 mengingat process yang harus di-restore setelah reboot.</p>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. pm2 status kosong</h4>
+<p>Artinya belum ada process yang dijalankan oleh PM2 untuk user saat ini.</p>
+
+<pre><code>cd /var/www/lms/frontend
+pm2 start npm --name lms -- start
+pm2 status
+pm2 save</code></pre>
+
+<h4>2. Process lms statusnya errored</h4>
+<p>Lihat log error:</p>
+
+<pre><code>pm2 logs lms --lines 100</code></pre>
+
+<p>Penyebab umum:</p>
+<ul>
+  <li><code>npm run build</code> belum dijalankan.</li>
+  <li>Dependency belum lengkap.</li>
+  <li>Environment variable belum disiapkan.</li>
+  <li>Port 3000 sudah dipakai process lain.</li>
+  <li>Command dijalankan dari folder yang salah.</li>
+</ul>
+
+<h4>3. 502 Bad Gateway di browser</h4>
+<p>Biasanya Nginx aktif, tetapi LMS tidak aktif di port <code>3000</code>.</p>
+
+<pre><code>pm2 status
+curl http://localhost:3000
+pm2 logs lms --lines 100</code></pre>
+
+<p>Jika process mati, jalankan ulang:</p>
+
+<pre><code>cd /var/www/lms/frontend
+pm2 restart lms</code></pre>
+
+<h4>4. Port 3000 tidak muncul</h4>
+<p>Cek apakah aplikasi benar-benar berjalan:</p>
+
+<pre><code>pm2 status
+ss -tulpn | grep 3000</code></pre>
+
+<p>Jika tidak ada output dari <code>ss</code>, lihat log PM2:</p>
+
+<pre><code>pm2 logs lms --lines 100</code></pre>
+
+<h4>5. Restart count terus naik</h4>
+<p>Ini tanda aplikasi crash lalu dicoba hidup kembali oleh PM2.</p>
+
+<pre><code>pm2 show lms
+pm2 logs lms --lines 150</code></pre>
+
+<p>Fokus pada error paling awal sebelum crash. Biasanya itulah akar masalahnya.</p>
+
+<h4>6. Memory terlalu tinggi</h4>
+<p>Cek realtime:</p>
+
+<pre><code>pm2 monit</code></pre>
+
+<p>Jika memory terus naik, kemungkinan ada memory leak atau traffic terlalu berat. Untuk tahap awal, restart process bisa menjadi solusi sementara:</p>
+
+<pre><code>pm2 restart lms</code></pre>
+
+<h4>7. Log terlalu ramai</h4>
+<p>Batasi tampilan log:</p>
+
+<pre><code>pm2 logs lms --lines 50</code></pre>
+
+<p>Jika perlu membersihkan log:</p>
+
+<pre><code>pm2 flush</code></pre>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms/frontend
+pm2 -v
+pm2 status
+pm2 logs lms
+pm2 logs lms --lines 100
+pm2 monit
+pm2 show lms
+ss -tulpn | grep 3000
+curl http://localhost:3000
+curl -I https://domainkita.com
+pm2 restart lms
+pm2 flush
+pm2 save</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita belajar memonitor LMS yang berjalan menggunakan PM2.</p>
+<p>Command paling penting untuk harian adalah:</p>
+
+<pre><code>pm2 status
+pm2 logs lms
+pm2 monit</code></pre>
+
+<p>Jika aplikasi tidak bisa diakses, cek urutannya: PM2 status, log aplikasi, port 3000, lalu Nginx/domain.</p>`,
+          },
+          {
+            id: "l2l-32-video",
+            title: "Video Monitoring PM2",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami cara monitoring aplikasi LMS dengan PM2 di VPS.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "32 min", 
           },
         ],
       },
