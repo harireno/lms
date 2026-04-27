@@ -5093,10 +5093,361 @@ sudo certbot renew --dry-run</code></pre>
             url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
             duration: "35 min",   
           },
-        ],
+        ],          
       },
+      {
+        id: "l2l-28b",
+        title: "Redirect non-www ke www",
+        duration: "35 min",
+        summary:
+          "Menstandarkan domain production agar semua akses dari domain tanpa www otomatis diarahkan ke www menggunakan Nginx redirect 301.",
+        order: 6,
+        materials: [
+          {
+            id: "l2l-28b-html",
+            title: "Redirect non-www ke www",
+            type: "html",
+            description:
+              "Materi lengkap tentang perbedaan DNS dan redirect, konfigurasi Nginx non-www ke www, validasi, dan troubleshooting production domain.",
+            htmlContent:
+              `<h2>Redirect non-www ke www</h2>
+<p>Pada lesson ini, kita akan membuat domain LMS lebih konsisten untuk production.</p>
+<p>Target akhirnya:</p>
+
+<pre><code>https://domainkita.com
+→ otomatis menjadi
+https://www.domainkita.com</code></pre>
+
+<p>Jadi user boleh mengetik domain dengan atau tanpa <code>www</code>, tetapi sistem tetap mengarahkan ke satu alamat utama, yaitu versi <code>www</code>.</p>
+
+<h3>Apa maksud non-www dan www?</h3>
+<p><strong>Non-www</strong> adalah domain tanpa awalan <code>www</code>, misalnya:</p>
+
+<pre><code>domainkita.com</code></pre>
+
+<p><strong>www</strong> adalah domain dengan awalan <code>www</code>, misalnya:</p>
+
+<pre><code>www.domainkita.com</code></pre>
+
+<p>Secara teknis, keduanya bisa dianggap sebagai host yang berbeda. Karena itu, walaupun isi websitenya sama, browser dan mesin pencari tetap bisa melihatnya sebagai dua alamat berbeda.</p>
+
+<h3>Apakah cukup setting di Domain Management?</h3>
+<p>Tidak cukup. DNS atau Domain Management hanya mengarahkan nama domain ke IP VPS.</p>
+<p>Contoh DNS yang benar:</p>
+
+<pre><code>domainkita.com      → IP VPS
+www.domainkita.com  → IP VPS</code></pre>
+
+<p>Artinya, kedua alamat tersebut sudah sampai ke server. Tetapi DNS tidak otomatis menyuruh browser pindah dari <code>domainkita.com</code> ke <code>www.domainkita.com</code>.</p>
+
+<div class="lesson-current-state-note">
+  <strong>Catatan penting:</strong> DNS adalah penunjuk alamat. Redirect adalah instruksi dari web server. Untuk redirect non-www ke www, kita perlu konfigurasi di Nginx.
+</div>
+
+<h3>Kenapa redirect ini penting?</h3>
+<ul>
+  <li><strong>Konsistensi URL:</strong> user selalu berakhir di satu alamat utama.</li>
+  <li><strong>SEO lebih rapi:</strong> menghindari duplicate content antara non-www dan www.</li>
+  <li><strong>Cookie dan session lebih konsisten:</strong> terutama untuk aplikasi login seperti LMS.</li>
+  <li><strong>Analytics lebih bersih:</strong> traffic tidak terpecah antara dua host.</li>
+  <li><strong>Production lebih profesional:</strong> domain terlihat punya canonical host yang jelas.</li>
+</ul>
+
+<h3>Gambaran alur setelah redirect</h3>
+
+<pre><code>http://domainkita.com
+→ https://www.domainkita.com
+
+https://domainkita.com
+→ https://www.domainkita.com
+
+http://www.domainkita.com
+→ https://www.domainkita.com
+
+https://www.domainkita.com
+→ tampilkan LMS</code></pre>
+
+<h3>Folder kerja command</h3>
+<p>Command pengecekan project LMS dijalankan dari folder project:</p>
+
+<pre><code>cd /var/www/lms
+pwd</code></pre>
+
+<p>File konfigurasi Nginx berada di folder sistem:</p>
+
+<pre><code>/etc/nginx/sites-available/lms</code></pre>
+
+<p>Jadi untuk mengubah konfigurasi, kita tetap pakai editor dengan <code>sudo</code>.</p>
+
+<h3>Langkah 1 — Pastikan DNS untuk non-www dan www sudah benar</h3>
+<p>Jalankan dari VPS atau dari komputer lokal:</p>
+
+<pre><code>nslookup domainkita.com 8.8.8.8
+nslookup www.domainkita.com 8.8.8.8</code></pre>
+
+<p>Hasil yang benar: keduanya mengarah ke IP public VPS.</p>
+
+<p>Jika <code>nslookup</code> belum tersedia di VPS, install dulu:</p>
+
+<pre><code>sudo apt update
+sudo apt install dnsutils -y</code></pre>
+
+<h3>Langkah 2 — Pastikan SSL sudah terbit untuk dua domain</h3>
+<p>Cek daftar sertifikat Certbot:</p>
+
+<pre><code>sudo certbot certificates</code></pre>
+
+<p>Pastikan sertifikat mencakup:</p>
+
+<pre><code>domainkita.com
+www.domainkita.com</code></pre>
+
+<p>Jika baru salah satu yang ada, jalankan ulang Certbot dengan dua domain:</p>
+
+<pre><code>sudo certbot --nginx -d domainkita.com -d www.domainkita.com</code></pre>
+
+<p>Jika Certbot belum ada:</p>
+
+<pre><code>sudo apt update
+sudo apt install certbot python3-certbot-nginx -y</code></pre>
+
+<h3>Langkah 3 — Backup konfigurasi Nginx sebelum edit</h3>
+<p>Sebelum mengubah Nginx, buat backup dulu:</p>
+
+<pre><code>sudo cp /etc/nginx/sites-available/lms /etc/nginx/sites-available/lms.backup-before-www-redirect</code></pre>
+
+<p>Cek file backup:</p>
+
+<pre><code>ls -la /etc/nginx/sites-available/</code></pre>
+
+<h3>Langkah 4 — Edit konfigurasi Nginx</h3>
+<p>Buka file konfigurasi LMS:</p>
+
+<pre><code>sudo nano /etc/nginx/sites-available/lms</code></pre>
+
+<p>Konsep konfigurasi finalnya adalah:</p>
+<ul>
+  <li>server block untuk <code>domainkita.com</code> hanya bertugas redirect ke <code>www.domainkita.com</code>.</li>
+  <li>server block untuk <code>www.domainkita.com</code> bertugas menampilkan aplikasi LMS.</li>
+</ul>
+
+<h3>Contoh konfigurasi Nginx setelah SSL aktif</h3>
+<p>Sesuaikan <code>domainkita.com</code>, <code>www.domainkita.com</code>, dan port aplikasi jika berbeda.</p>
+
+<pre><code>server {
+    listen 80;
+    server_name domainkita.com;
+
+    return 301 https://www.domainkita.com$request_uri;
+}
+
+server {
+    listen 80;
+    server_name www.domainkita.com;
+
+    return 301 https://www.domainkita.com$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name domainkita.com;
+
+    ssl_certificate /etc/letsencrypt/live/domainkita.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/domainkita.com/privkey.pem;
+
+    return 301 https://www.domainkita.com$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name www.domainkita.com;
+
+    ssl_certificate /etc/letsencrypt/live/domainkita.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/domainkita.com/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}</code></pre>
+
+<div class="lesson-current-state-note">
+  <strong>Catatan:</strong> Path sertifikat bisa berbeda jika Certbot membuat folder live dengan nama lain. Cek path yang benar menggunakan <code>sudo certbot certificates</code>.
+</div>
+
+<h3>Langkah 5 — Test konfigurasi Nginx</h3>
+<p>Jangan reload Nginx sebelum test config berhasil.</p>
+
+<pre><code>sudo nginx -t</code></pre>
+
+<p>Jika hasilnya sukses, reload Nginx:</p>
+
+<pre><code>sudo systemctl reload nginx
+sudo systemctl status nginx</code></pre>
+
+<h3>Langkah 6 — Test redirect dari VPS</h3>
+<p>Jalankan command berikut:</p>
+
+<pre><code>curl -I http://domainkita.com
+curl -I https://domainkita.com
+curl -I http://www.domainkita.com
+curl -I https://www.domainkita.com</code></pre>
+
+<p>Hasil yang diharapkan:</p>
+<ul>
+  <li><code>http://domainkita.com</code> memberi status <code>301</code> ke <code>https://www.domainkita.com</code>.</li>
+  <li><code>https://domainkita.com</code> memberi status <code>301</code> ke <code>https://www.domainkita.com</code>.</li>
+  <li><code>http://www.domainkita.com</code> memberi status <code>301</code> ke <code>https://www.domainkita.com</code>.</li>
+  <li><code>https://www.domainkita.com</code> memberi status <code>200</code> atau response aplikasi LMS.</li>
+</ul>
+
+<p>Untuk melihat alur redirect lengkap:</p>
+
+<pre><code>curl -IL http://domainkita.com</code></pre>
+
+<h3>Langkah 7 — Test dari browser</h3>
+<p>Buka alamat berikut satu per satu:</p>
+
+<pre><code>http://domainkita.com
+https://domainkita.com
+http://www.domainkita.com
+https://www.domainkita.com</code></pre>
+
+<p>Semuanya harus berakhir di:</p>
+
+<pre><code>https://www.domainkita.com</code></pre>
+
+<h3>Bagaimana jika kita ingin kebalikannya: www ke non-www?</h3>
+<p>Bisa juga. Prinsipnya sama, hanya host utama yang dipilih berbeda.</p>
+<p>Jika ingin domain utama tanpa <code>www</code>, maka redirect diarahkan ke:</p>
+
+<pre><code>https://domainkita.com</code></pre>
+
+<p>Yang penting bukan harus selalu <code>www</code>, tetapi harus memilih satu canonical domain dan konsisten.</p>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. sudo nginx -t gagal</h4>
+<p>Jangan reload Nginx. Perbaiki dulu error yang muncul.</p>
+
+<pre><code>sudo nginx -t
+sudo nano /etc/nginx/sites-available/lms</code></pre>
+
+<p>Kesalahan umum:</p>
+<ul>
+  <li>Kurang tanda titik koma <code>;</code>.</li>
+  <li>Kurung kurawal <code>{ }</code> tidak lengkap.</li>
+  <li>Salah ketik variable Nginx, misalnya <code>$remote_add</code> harusnya <code>$remote_addr</code>.</li>
+  <li>Salah ketik <code>$proxy_add_x_forwarded_for</code>.</li>
+  <li>Salah path sertifikat SSL.</li>
+</ul>
+
+<h4>2. Redirect tidak jalan, domain tetap non-www</h4>
+<p>Cek server block untuk <code>domainkita.com</code>. Pastikan isinya hanya redirect:</p>
+
+<pre><code>server_name domainkita.com;
+return 301 https://www.domainkita.com$request_uri;</code></pre>
+
+<p>Lalu test dan reload:</p>
+
+<pre><code>sudo nginx -t
+sudo systemctl reload nginx</code></pre>
+
+<h4>3. Browser masih menampilkan hasil lama</h4>
+<p>Redirect 301 bisa tersimpan di cache browser.</p>
+<p>Solusi:</p>
+<ul>
+  <li>Coba Incognito / Private Window.</li>
+  <li>Coba browser lain.</li>
+  <li>Cek dengan <code>curl -I</code> karena lebih objektif.</li>
+</ul>
+
+<h4>4. HTTPS non-www error certificate warning</h4>
+<p>Berarti sertifikat belum mencakup domain non-www.</p>
+
+<pre><code>sudo certbot certificates
+sudo certbot --nginx -d domainkita.com -d www.domainkita.com</code></pre>
+
+<p>Setelah itu test ulang:</p>
+
+<pre><code>curl -I https://domainkita.com</code></pre>
+
+<h4>5. Setelah redirect, muncul 502 Bad Gateway</h4>
+<p>Redirect sudah bekerja, tetapi aplikasi LMS belum berjalan di port internal.</p>
+
+<pre><code>cd /var/www/lms
+curl http://127.0.0.1:3000
+pm2 status</code></pre>
+
+<p>Jika PM2 belum dipakai, jalankan sementara:</p>
+
+<pre><code>npm run start</code></pre>
+
+<p>Jika sudah memakai PM2, restart proses LMS:</p>
+
+<pre><code>pm2 restart lms
+pm2 status</code></pre>
+
+<h4>6. Error too many redirects</h4>
+<p>Biasanya terjadi karena konfigurasi redirect saling memutar.</p>
+<p>Pastikan hanya non-www yang redirect ke www, dan block www tidak redirect balik ke non-www.</p>
+
+<pre><code>curl -IL http://domainkita.com</code></pre>
+
+<p>Jika terlihat redirect berulang, review semua server block:</p>
+
+<pre><code>sudo nginx -T | grep -n "server_name"</code></pre>
+
+<h4>7. File konfigurasi salah dan ingin rollback</h4>
+<p>Kembalikan dari file backup:</p>
+
+<pre><code>sudo cp /etc/nginx/sites-available/lms.backup-before-www-redirect /etc/nginx/sites-available/lms
+sudo nginx -t
+sudo systemctl reload nginx</code></pre>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms
+nslookup domainkita.com 8.8.8.8
+nslookup www.domainkita.com 8.8.8.8
+sudo certbot certificates
+sudo cp /etc/nginx/sites-available/lms /etc/nginx/sites-available/lms.backup-before-www-redirect
+sudo nano /etc/nginx/sites-available/lms
+sudo nginx -t
+sudo systemctl reload nginx
+curl -I http://domainkita.com
+curl -I https://domainkita.com
+curl -I http://www.domainkita.com
+curl -I https://www.domainkita.com
+curl -IL http://domainkita.com</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita menstandarkan domain production agar semua akses masuk ke satu canonical domain.</p>
+<p>DNS tetap dibutuhkan untuk mengarahkan <code>domainkita.com</code> dan <code>www.domainkita.com</code> ke VPS, tetapi redirect-nya dilakukan oleh Nginx.</p>
+<p>Setelah redirect non-www ke www aktif, LMS lebih rapi untuk production, SEO, analytics, cookie, session, dan pengalaman user.</p>
+<p>Langkah berikutnya adalah menjalankan LMS secara stabil di background menggunakan PM2.</p>`,
+          },
+          {
+            id: "l2l-28b-video",
+            title: "Video Redirect non-www ke www",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami redirect non-www ke www menggunakan Nginx pada VPS production.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "35 min",
+          },
+        ],
+      },  
     ],
-  },
+  },      
   {
     id: "l2l-sec-6",
     title: "Module 6 — Running with PM2",
@@ -6092,70 +6443,1050 @@ pm2 monit</code></pre>
       {
         id: "l2l-33",
         title: "Enable Gzip",
-        duration: "7 min",
-        summary: "Mengompresi response agar delivery asset lebih efisien.",
+        duration: "28 min",
+        summary:
+          "Mengaktifkan Gzip compression di Nginx agar response HTML, CSS, JavaScript, JSON, dan SVG lebih ringan saat dikirim ke browser.",  
         order: 1,
         materials: [
           {
             id: "l2l-33-html",
             title: "Gzip Compression",
             type: "html",
-            description: "Optimasi response dasar pada Nginx.",
+            description:
+              "Mengaktifkan Gzip di Nginx, validasi konfigurasi, cek header Content-Encoding, dan troubleshooting compression.", 
             htmlContent:
-              "<h2>Enable Gzip</h2><p>Compression membantu memperkecil response HTML, CSS, dan JS sehingga halaman terasa lebih ringan.</p>",
+              `<h2>Gzip Compression</h2>
+<p>Pada lesson ini, kita akan mengaktifkan <strong>Gzip compression</strong> di Nginx agar response website menjadi lebih kecil sebelum dikirim ke browser.</p>
+<p>Materi Nginx, HTTPS, dan PM2 sudah dibahas sebelumnya. Di lesson ini kita hanya fokus pada optimasi compression.</p>
+
+<h3>Apa itu Gzip?</h3>
+<p><strong>Gzip</strong> adalah metode kompresi yang membuat file berbasis teks menjadi lebih kecil saat dikirim dari server ke browser.</p>
+<p>Contoh file yang biasanya cocok dikompresi:</p>
+<ul>
+  <li>HTML</li>
+  <li>CSS</li>
+  <li>JavaScript</li>
+  <li>JSON</li>
+  <li>XML</li>
+  <li>SVG</li>
+</ul>
+
+<h3>Kenapa Gzip penting?</h3>
+<ul>
+  <li>Ukuran response lebih kecil.</li>
+  <li>Halaman terasa lebih cepat dimuat.</li>
+  <li>Bandwidth server lebih hemat.</li>
+  <li>User dengan koneksi lambat lebih terbantu.</li>
+  <li>Optimasi dasar yang umum dipakai di production.</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<p>Konfigurasi Gzip berada di level Nginx, jadi command boleh dijalankan dari folder mana saja.</p>
+<p>Namun agar konsisten dengan course ini, kita mulai dari folder project LMS:</p>
+
+<pre><code>cd /var/www/lms
+pwd</code></pre>
+
+<p>Jika folder belum ada, cek:</p>
+
+<pre><code>ls -la /var/www</code></pre>
+
+<h3>Langkah 1 — Pastikan Nginx tersedia</h3>
+<p>Command ini dijalankan di VPS:</p>
+
+<pre><code>nginx -v</code></pre>
+
+<p>Jika Nginx belum tersedia, install dulu:</p>
+
+<pre><code>sudo apt update
+sudo apt install nginx -y</code></pre>
+
+<p>Cek status Nginx:</p>
+
+<pre><code>sudo systemctl status nginx</code></pre>
+
+<p>Jika belum aktif:</p>
+
+<pre><code>sudo systemctl enable nginx
+sudo systemctl start nginx
+sudo systemctl status nginx</code></pre>
+
+<h3>Langkah 2 — Backup konfigurasi sebelum edit</h3>
+<p>Sebelum mengubah konfigurasi Nginx, buat backup dulu.</p>
+
+<pre><code>sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.backup-before-gzip</code></pre>
+
+<p>Cek backup:</p>
+
+<pre><code>ls -la /etc/nginx/</code></pre>
+
+<h3>Langkah 3 — Cek apakah Gzip sudah aktif</h3>
+<p>Cek konfigurasi global Nginx:</p>
+
+<pre><code>sudo grep -n "gzip" /etc/nginx/nginx.conf</code></pre>
+
+<p>Jika terlihat <code>gzip on;</code>, berarti Gzip mungkin sudah aktif. Namun kita tetap perlu memastikan tipe file yang dikompresi sudah cukup lengkap.</p>
+
+<h3>Langkah 4 — Edit konfigurasi Nginx</h3>
+<p>Buka file konfigurasi utama Nginx:</p>
+
+<pre><code>sudo nano /etc/nginx/nginx.conf</code></pre>
+
+<p>Cari blok <code>http { ... }</code>, lalu tambahkan atau rapikan konfigurasi Gzip di dalam blok <code>http</code>.</p>
+
+<pre><code>gzip on;
+gzip_comp_level 5;
+gzip_min_length 1024;
+gzip_vary on;
+gzip_proxied any;
+gzip_disable "msie6";
+
+gzip_types
+    text/plain
+    text/css
+    text/xml
+    text/javascript
+    application/json
+    application/javascript
+    application/xml
+    application/xml+rss
+    application/xhtml+xml
+    application/rss+xml
+    image/svg+xml
+    font/ttf
+    font/otf
+    application/vnd.ms-fontobject;</code></pre>
+
+<p>Simpan file di nano:</p>
+<ul>
+  <li><code>CTRL + O</code> lalu Enter untuk save</li>
+  <li><code>CTRL + X</code> untuk keluar</li>
+</ul>
+
+<h3>Langkah 5 — Test syntax Nginx</h3>
+<p>Jangan reload Nginx sebelum test syntax berhasil.</p>
+
+<pre><code>sudo nginx -t</code></pre>
+
+<p>Jika hasilnya sukses, lanjut reload:</p>
+
+<pre><code>sudo systemctl reload nginx
+sudo systemctl status nginx</code></pre>
+
+<h3>Langkah 6 — Test Gzip dari VPS</h3>
+<p>Gunakan header <code>Accept-Encoding: gzip</code> agar browser/server tahu bahwa client menerima response gzip.</p>
+
+<pre><code>curl -I -H "Accept-Encoding: gzip" https://domainkita.com</code></pre>
+
+<p>Jika <code>curl</code> belum tersedia:</p>
+
+<pre><code>sudo apt update
+sudo apt install curl -y</code></pre>
+
+<p>Hasil yang kita cari adalah header seperti:</p>
+
+<pre><code>Content-Encoding: gzip</code></pre>
+
+<h3>Langkah 7 — Test file asset</h3>
+<p>Kadang halaman utama belum terlihat compressed karena ukuran response kecil. Test juga file CSS atau JavaScript yang ukurannya lebih besar.</p>
+
+<pre><code>curl -I -H "Accept-Encoding: gzip" https://domainkita.com</code></pre>
+
+<p>Jika kita tahu path file asset tertentu, bisa cek langsung:</p>
+
+<pre><code>curl -I -H "Accept-Encoding: gzip" https://domainkita.com/path-ke-file.js</code></pre>
+
+<h3>Langkah 8 — Test dari browser</h3>
+<p>Buka website dari browser:</p>
+
+<pre><code>https://domainkita.com</code></pre>
+
+<p>Lalu buka Developer Tools → Network → pilih request HTML/CSS/JS → cek Response Headers.</p>
+<p>Jika aktif, biasanya akan terlihat:</p>
+
+<pre><code>content-encoding: gzip</code></pre>
+
+<h3>Catatan penting</h3>
+<p>Gzip biasanya tidak perlu diterapkan ke file gambar seperti JPG, PNG, atau WebP karena format tersebut sudah compressed.</p>
+<p>Jadi fokus Gzip adalah file berbasis teks seperti HTML, CSS, JS, JSON, XML, dan SVG.</p>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. sudo nginx -t gagal</h4>
+<p>Jangan reload Nginx. Baca pesan error yang muncul, biasanya ada nomor baris.</p>
+
+<pre><code>sudo nginx -t
+sudo nano /etc/nginx/nginx.conf</code></pre>
+
+<p>Kesalahan umum:</p>
+<ul>
+  <li>Konfigurasi Gzip diletakkan di luar blok <code>http</code>.</li>
+  <li>Kurang tanda titik koma <code>;</code>.</li>
+  <li>Ada typo pada directive Nginx.</li>
+</ul>
+
+<h4>2. Header Content-Encoding gzip tidak muncul</h4>
+<p>Kemungkinan response terlalu kecil, tipe file belum masuk <code>gzip_types</code>, atau request tidak mengirim header <code>Accept-Encoding</code>.</p>
+
+<pre><code>curl -I -H "Accept-Encoding: gzip" https://domainkita.com</code></pre>
+
+<p>Pastikan juga konfigurasi sudah direload:</p>
+
+<pre><code>sudo nginx -t
+sudo systemctl reload nginx</code></pre>
+
+<h4>3. Website tetap bisa dibuka tapi tidak terasa lebih cepat</h4>
+<p>Gzip hanya salah satu optimasi. Kecepatan website juga dipengaruhi ukuran image, JavaScript, database/API, cache, dan koneksi user.</p>
+<p>Lesson ini hanya fokus compression. Cache akan dibahas terpisah agar tidak overlap.</p>
+
+<h4>4. Browser menampilkan 502 Bad Gateway setelah reload</h4>
+<p>Gzip biasanya bukan penyebab 502. Cek PM2 dan port aplikasi:</p>
+
+<pre><code>pm2 status
+curl http://localhost:3000
+pm2 logs lms --lines 50</code></pre>
+
+<h4>5. Ingin rollback konfigurasi</h4>
+<p>Jika konfigurasi bermasalah, restore backup:</p>
+
+<pre><code>sudo cp /etc/nginx/nginx.conf.backup-before-gzip /etc/nginx/nginx.conf
+sudo nginx -t
+sudo systemctl reload nginx</code></pre>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms
+nginx -v
+sudo systemctl status nginx
+sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.backup-before-gzip
+sudo grep -n "gzip" /etc/nginx/nginx.conf
+sudo nano /etc/nginx/nginx.conf
+sudo nginx -t
+sudo systemctl reload nginx
+curl -I -H "Accept-Encoding: gzip" https://domainkita.com</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita mengaktifkan Gzip compression di Nginx untuk membuat response berbasis teks lebih ringan.</p>
+<p>Jika test header menampilkan <code>Content-Encoding: gzip</code>, berarti compression sudah aktif.</p>
+<p>Langkah berikutnya adalah membahas cache dasar Nginx agar asset statis bisa dilayani lebih efisien.</p>`,
+          },
+          {
+            id: "l2l-33-video",
+            title: "Video Gzip Compression",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami Gzip compression pada Nginx agar response LMS lebih ringan.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "28 min",    
           },
         ],
       },
       {
         id: "l2l-34",
         title: "Basic Nginx cache",
-        duration: "8 min",
-        summary: "Memahami cache statis sederhana untuk asset frontend.",
+        duration: "30 min",
+        summary:
+          "Memahami caching dasar untuk asset statis LMS di Nginx agar file seperti CSS, JavaScript, gambar, font, dan favicon lebih efisien dilayani browser.",  
         order: 2,
         materials: [
           {
             id: "l2l-34-html",
             title: "Caching Dasar",
             type: "html",
-            description: "Pendekatan cache sederhana untuk asset statis.",
+            description:
+              "Konfigurasi cache dasar Nginx untuk asset statis, cara validasi header Cache-Control, dan troubleshooting cache yang belum aktif.",  
             htmlContent:
-              "<h2>Nginx cache</h2><p>File statis seperti image, CSS, dan JS dapat diberi cache policy yang lebih baik agar loading lebih cepat.</p>",
+              `<h2>Caching Dasar</h2>
+<p>Pada lesson ini, kita akan membahas caching dasar di Nginx untuk file statis LMS.</p>
+<p>Materi Gzip sudah dibahas sebelumnya. Gzip mengecilkan ukuran response, sedangkan cache membantu browser menyimpan file agar tidak perlu download ulang terus-menerus.</p>
+
+<h3>Apa itu caching?</h3>
+<p><strong>Caching</strong> adalah proses menyimpan sementara file yang sering dipakai agar akses berikutnya menjadi lebih cepat.</p>
+<p>Contoh file yang cocok diberi cache:</p>
+<ul>
+  <li>CSS</li>
+  <li>JavaScript</li>
+  <li>Image seperti JPG, PNG, WebP, SVG</li>
+  <li>Font seperti WOFF dan WOFF2</li>
+  <li>Favicon</li>
+</ul>
+
+<h3>Kenapa caching penting?</h3>
+<ul>
+  <li>Loading halaman berikutnya lebih cepat.</li>
+  <li>Bandwidth VPS lebih hemat.</li>
+  <li>Browser tidak perlu download asset yang sama berkali-kali.</li>
+  <li>Website terasa lebih ringan untuk user.</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<p>Konfigurasi caching dilakukan di file Nginx, jadi command boleh dijalankan dari folder mana saja.</p>
+<p>Namun agar konsisten dengan course ini, kita mulai dari folder project LMS:</p>
+
+<pre><code>cd /var/www/lms
+pwd</code></pre>
+
+<p>Jika folder belum ada, cek:</p>
+
+<pre><code>ls -la /var/www</code></pre>
+
+<h3>Langkah 1 — Pastikan Nginx aktif</h3>
+<p>Command ini dijalankan di VPS:</p>
+
+<pre><code>nginx -v
+sudo systemctl status nginx</code></pre>
+
+<p>Jika Nginx belum tersedia:</p>
+
+<pre><code>sudo apt update
+sudo apt install nginx -y</code></pre>
+
+<p>Jika Nginx belum aktif:</p>
+
+<pre><code>sudo systemctl enable nginx
+sudo systemctl start nginx
+sudo systemctl status nginx</code></pre>
+
+<h3>Langkah 2 — Backup config site LMS</h3>
+<p>Kita akan mengubah config site LMS, jadi buat backup dulu.</p>
+
+<pre><code>sudo cp /etc/nginx/sites-available/lms /etc/nginx/sites-available/lms.backup-before-cache</code></pre>
+
+<p>Cek backup:</p>
+
+<pre><code>ls -la /etc/nginx/sites-available/</code></pre>
+
+<h3>Langkah 3 — Buka file config site</h3>
+<p>Command ini dijalankan di VPS:</p>
+
+<pre><code>sudo nano /etc/nginx/sites-available/lms</code></pre>
+
+<p>Tambahkan blok cache berikut di dalam blok <code>server { ... }</code>, sejajar dengan blok <code>location / { ... }</code>.</p>
+
+<pre><code>location ~* \\.(?:css|js|jpg|jpeg|gif|png|webp|ico|svg|woff|woff2|ttf|otf)$ {
+  expires 30d;
+  add_header Cache-Control "public, max-age=2592000, immutable";
+  access_log off;
+
+  proxy_pass http://127.0.0.1:3000;
+  proxy_http_version 1.1;
+  proxy_set_header Host $host;
+  proxy_set_header X-Real-IP $remote_addr;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto $scheme;
+}</code></pre>
+
+<p>Untuk Next.js, asset build biasanya berada di path <code>/_next/static/</code>. Kita bisa memberi cache lebih panjang untuk path ini:</p>
+
+<pre><code>location /_next/static/ {
+  expires 1y;
+  add_header Cache-Control "public, max-age=31536000, immutable";
+  access_log off;
+
+  proxy_pass http://127.0.0.1:3000;
+  proxy_http_version 1.1;
+  proxy_set_header Host $host;
+  proxy_set_header X-Real-IP $remote_addr;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto $scheme;
+}</code></pre>
+
+<h3>Langkah 4 — Jangan cache halaman dinamis terlalu agresif</h3>
+<p>Untuk halaman utama dan halaman yang mungkin berubah, biarkan tetap lewat reverse proxy normal seperti yang sudah dibuat sebelumnya.</p>
+
+<pre><code>location / {
+  proxy_pass http://127.0.0.1:3000;
+  proxy_http_version 1.1;
+  proxy_set_header Upgrade $http_upgrade;
+  proxy_set_header Connection "upgrade";
+  proxy_set_header Host $host;
+  proxy_set_header X-Real-IP $remote_addr;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto $scheme;
+  proxy_cache_bypass $http_upgrade;
+}</code></pre>
+
+<p>Intinya, cache agresif cocok untuk asset statis, bukan untuk halaman login, dashboard, atau konten dinamis.</p>
+
+<h3>Langkah 5 — Test syntax Nginx</h3>
+<p>Setelah edit file, jangan langsung reload. Test dulu:</p>
+
+<pre><code>sudo nginx -t</code></pre>
+
+<p>Jika sukses, reload Nginx:</p>
+
+<pre><code>sudo systemctl reload nginx
+sudo systemctl status nginx</code></pre>
+
+<h3>Langkah 6 — Test header cache</h3>
+<p>Gunakan <code>curl -I</code> untuk melihat response header.</p>
+
+<pre><code>curl -I https://domainkita.com</code></pre>
+
+<p>Untuk asset statis, gunakan path file asset yang benar. Contoh:</p>
+
+<pre><code>curl -I https://domainkita.com/favicon.ico</code></pre>
+
+<p>Jika punya path asset Next.js, cek seperti ini:</p>
+
+<pre><code>curl -I https://domainkita.com/_next/static/contoh-file.js</code></pre>
+
+<p>Header yang kita cari:</p>
+
+<pre><code>Cache-Control: public, max-age=2592000, immutable</code></pre>
+
+<p>atau untuk asset <code>/_next/static/</code>:</p>
+
+<pre><code>Cache-Control: public, max-age=31536000, immutable</code></pre>
+
+<h3>Langkah 7 — Test dari browser</h3>
+<p>Buka website dari browser:</p>
+
+<pre><code>https://domainkita.com</code></pre>
+
+<p>Lalu buka Developer Tools → Network → pilih file CSS/JS/image → cek Response Headers.</p>
+<p>Jika cache aktif, akan terlihat header <code>cache-control</code>.</p>
+
+<h3>Catatan untuk pemula</h3>
+<p>Cache bukan berarti server tidak bekerja sama sekali. Cache hanya membantu browser menyimpan file tertentu agar tidak perlu download ulang.</p>
+<p>Untuk file yang sering berubah, jangan beri cache terlalu panjang.</p>
+
+<h3>Catatan untuk yang sudah advanced</h3>
+<p>Next.js biasanya sudah memberi fingerprint pada asset build di <code>/_next/static/</code>. Karena nama file berubah saat build baru, path ini relatif aman diberi cache panjang dengan <code>immutable</code>.</p>
+<p>Namun untuk file publik seperti <code>/favicon.ico</code> atau image yang namanya tidak berubah, gunakan cache lebih hati-hati karena browser bisa menyimpan versi lama.</p>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. sudo nginx -t gagal</h4>
+<p>Jangan reload Nginx. Baca pesan error yang muncul.</p>
+
+<pre><code>sudo nginx -t
+sudo nano /etc/nginx/sites-available/lms</code></pre>
+
+<p>Kesalahan umum:</p>
+<ul>
+  <li>Blok <code>location</code> diletakkan di luar blok <code>server</code>.</li>
+  <li>Kurang tanda titik koma <code>;</code>.</li>
+  <li>Kurung kurawal <code>{ }</code> tidak seimbang.</li>
+  <li>Regex location salah escape.</li>
+</ul>
+
+<h4>2. Header Cache-Control tidak muncul</h4>
+<p>Pastikan kita mengecek file statis, bukan halaman HTML utama.</p>
+
+<pre><code>curl -I https://domainkita.com/favicon.ico</code></pre>
+
+<p>Pastikan Nginx sudah reload:</p>
+
+<pre><code>sudo nginx -t
+sudo systemctl reload nginx</code></pre>
+
+<h4>3. Website masih menampilkan asset lama</h4>
+<p>Ini efek normal dari cache. Untuk testing, lakukan hard refresh di browser:</p>
+
+<pre><code>CTRL + F5</code></pre>
+
+<p>Atau buka Developer Tools → Network → centang Disable cache saat testing.</p>
+
+<h4>4. Setelah reload muncul 502 Bad Gateway</h4>
+<p>Biasanya bukan karena cache, tetapi aplikasi LMS di PM2 tidak berjalan.</p>
+
+<pre><code>pm2 status
+curl http://localhost:3000
+pm2 logs lms --lines 50</code></pre>
+
+<h4>5. Ingin rollback config cache</h4>
+<p>Restore file backup:</p>
+
+<pre><code>sudo cp /etc/nginx/sites-available/lms.backup-before-cache /etc/nginx/sites-available/lms
+sudo nginx -t
+sudo systemctl reload nginx</code></pre>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms
+nginx -v
+sudo systemctl status nginx
+sudo cp /etc/nginx/sites-available/lms /etc/nginx/sites-available/lms.backup-before-cache
+sudo nano /etc/nginx/sites-available/lms
+sudo nginx -t
+sudo systemctl reload nginx
+curl -I https://domainkita.com
+curl -I https://domainkita.com/favicon.ico
+pm2 status
+curl http://localhost:3000</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita menambahkan caching dasar untuk asset statis LMS.</p>
+<p>Gzip membantu mengecilkan response, sedangkan cache membantu browser menyimpan file agar loading berikutnya lebih cepat.</p>
+<p>Jika header <code>Cache-Control</code> muncul pada asset statis, berarti caching dasar sudah aktif.</p>`,
+          },
+          {
+            id: "l2l-34-video",
+            title: "Video Caching Dasar",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami caching dasar asset statis LMS di Nginx.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "30 min",      
           },
         ],
       },
       {
         id: "l2l-35",
         title: "Security headers",
-        duration: "8 min",
+        duration: "32 min",
         summary:
-          "Menambahkan header keamanan dasar untuk production website.",
+          "Menambahkan HTTP security headers dasar di Nginx untuk membantu melindungi LMS dari risiko clickjacking, MIME sniffing, referrer leak, dan akses browser-side yang tidak perlu.", 
         order: 3,
         materials: [
           {
             id: "l2l-35-html",
             title: "HTTP Security Headers",
             type: "html",
-            description: "Header dasar untuk meningkatkan keamanan browser-side.",
+            description:
+              "Menambahkan header keamanan dasar di Nginx, validasi header dengan curl, dan troubleshooting jika header belum muncul.",  
             htmlContent:
-              "<h2>Security headers</h2><p>Header seperti <code>X-Frame-Options</code>, <code>X-Content-Type-Options</code>, dan <code>Referrer-Policy</code> membantu meningkatkan keamanan aplikasi web.</p>",
+              `<h2>HTTP Security Headers</h2>
+<p>Pada lesson ini, kita akan menambahkan <strong>HTTP Security Headers</strong> pada Nginx.</p>
+<p>Materi HTTPS, Gzip, dan caching sudah dibahas sebelumnya. Di lesson ini kita fokus pada header keamanan yang dikirim server ke browser.</p>
+
+<h3>Apa itu HTTP Security Headers?</h3>
+<p>HTTP Security Headers adalah instruksi tambahan dari server kepada browser untuk membantu meningkatkan keamanan website.</p>
+<p>Header ini tidak menggantikan secure coding, validasi input, authentication, atau HTTPS. Tetapi header ini menjadi lapisan perlindungan tambahan untuk aplikasi production.</p>
+
+<h3>Kenapa security headers penting?</h3>
+<ul>
+  <li>Mengurangi risiko website ditampilkan di iframe berbahaya.</li>
+  <li>Mencegah browser menebak tipe file secara sembarangan.</li>
+  <li>Mengontrol informasi referrer yang dikirim ke website lain.</li>
+  <li>Membatasi fitur browser tertentu seperti camera, microphone, dan geolocation.</li>
+  <li>Membantu website terlihat lebih siap untuk production.</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<p>Konfigurasi security headers dilakukan di file Nginx, jadi command boleh dijalankan dari folder mana saja.</p>
+<p>Namun agar konsisten dengan course ini, kita mulai dari folder project LMS:</p>
+
+<pre><code>cd /var/www/lms
+pwd</code></pre>
+
+<p>Jika folder belum ada, cek:</p>
+
+<pre><code>ls -la /var/www</code></pre>
+
+<h3>Langkah 1 — Pastikan Nginx aktif</h3>
+<p>Command ini dijalankan di VPS:</p>
+
+<pre><code>nginx -v
+sudo systemctl status nginx</code></pre>
+
+<p>Jika Nginx belum tersedia:</p>
+
+<pre><code>sudo apt update
+sudo apt install nginx -y</code></pre>
+
+<p>Jika Nginx belum aktif:</p>
+
+<pre><code>sudo systemctl enable nginx
+sudo systemctl start nginx
+sudo systemctl status nginx</code></pre>
+
+<h3>Langkah 2 — Backup config site LMS</h3>
+<p>Sebelum mengubah konfigurasi, buat backup dulu.</p>
+
+<pre><code>sudo cp /etc/nginx/sites-available/lms /etc/nginx/sites-available/lms.backup-before-security-headers</code></pre>
+
+<p>Cek backup:</p>
+
+<pre><code>ls -la /etc/nginx/sites-available/</code></pre>
+
+<h3>Langkah 3 — Buka config Nginx LMS</h3>
+<p>Command ini dijalankan di VPS:</p>
+
+<pre><code>sudo nano /etc/nginx/sites-available/lms</code></pre>
+
+<p>Tambahkan header berikut di dalam blok <code>server { ... }</code>. Letakkan di atas blok <code>location</code> agar berlaku untuk response dari server tersebut.</p>
+
+<pre><code>add_header X-Frame-Options "SAMEORIGIN" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+add_header X-XSS-Protection "0" always;</code></pre>
+
+<h3>Langkah 4 — Tambahkan HSTS hanya jika HTTPS sudah aktif</h3>
+<p>Jika HTTPS sudah aktif dan domain sudah stabil, kita bisa menambahkan HSTS:</p>
+
+<pre><code>add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;</code></pre>
+
+<p><strong>Penting:</strong> jangan aktifkan HSTS terlalu cepat jika HTTPS belum benar-benar stabil. HSTS membuat browser memaksa domain memakai HTTPS selama masa <code>max-age</code>.</p>
+
+<h3>Contoh posisi dalam server block</h3>
+
+<pre><code>server {
+  listen 443 ssl;
+  listen [::]:443 ssl;
+
+  server_name domainkita.com www.domainkita.com;
+
+  add_header X-Frame-Options "SAMEORIGIN" always;
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+  add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+  add_header X-XSS-Protection "0" always;
+  add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+  location / {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
+}</code></pre>
+
+<p>Sesuaikan dengan konfigurasi Nginx yang sudah dibuat oleh Certbot. Jangan menghapus baris SSL yang dibuat Certbot.</p>
+
+<h3>Langkah 5 — Test syntax Nginx</h3>
+<p>Jangan reload sebelum test syntax sukses.</p>
+
+<pre><code>sudo nginx -t</code></pre>
+
+<p>Jika sukses, reload Nginx:</p>
+
+<pre><code>sudo systemctl reload nginx
+sudo systemctl status nginx</code></pre>
+
+<h3>Langkah 6 — Cek header dari VPS</h3>
+<p>Gunakan <code>curl -I</code> untuk melihat response header.</p>
+
+<pre><code>curl -I https://domainkita.com</code></pre>
+
+<p>Jika <code>curl</code> belum tersedia:</p>
+
+<pre><code>sudo apt update
+sudo apt install curl -y</code></pre>
+
+<p>Header yang ingin kita lihat:</p>
+
+<pre><code>X-Frame-Options: SAMEORIGIN
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=()
+Strict-Transport-Security: max-age=31536000; includeSubDomains</code></pre>
+
+<h3>Langkah 7 — Cek dari browser</h3>
+<p>Buka website:</p>
+
+<pre><code>https://domainkita.com</code></pre>
+
+<p>Lalu buka Developer Tools → Network → pilih request utama document → cek Response Headers.</p>
+
+<h3>Penjelasan singkat setiap header</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Header</th>
+      <th>Fungsi</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>X-Frame-Options</code></td>
+      <td>Membatasi website agar tidak mudah dimasukkan ke iframe pihak lain.</td>
+    </tr>
+    <tr>
+      <td><code>X-Content-Type-Options</code></td>
+      <td>Mencegah browser menebak tipe file di luar header yang dikirim server.</td>
+    </tr>
+    <tr>
+      <td><code>Referrer-Policy</code></td>
+      <td>Mengatur seberapa banyak informasi URL asal dikirim ke website lain.</td>
+    </tr>
+    <tr>
+      <td><code>Permissions-Policy</code></td>
+      <td>Membatasi fitur browser seperti kamera, mikrofon, dan lokasi.</td>
+    </tr>
+    <tr>
+      <td><code>Strict-Transport-Security</code></td>
+      <td>Memaksa browser memakai HTTPS untuk domain tersebut selama periode tertentu.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Catatan tentang Content-Security-Policy</h3>
+<p><code>Content-Security-Policy</code> atau CSP sangat powerful, tetapi juga mudah membuat website error jika terlalu ketat.</p>
+<p>Untuk tahap dasar, kita belum memasang CSP penuh di lesson ini supaya tidak merusak asset Next.js, script, style, atau resource eksternal. CSP bisa dibahas sebagai lesson advanced terpisah.</p>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. sudo nginx -t gagal</h4>
+<p>Jangan reload Nginx. Baca pesan error dan cek file config.</p>
+
+<pre><code>sudo nginx -t
+sudo nano /etc/nginx/sites-available/lms</code></pre>
+
+<p>Kesalahan umum:</p>
+<ul>
+  <li>Kurang tanda titik koma <code>;</code>.</li>
+  <li>Header diletakkan di luar blok <code>server</code>.</li>
+  <li>Tanda kutip tidak lengkap.</li>
+  <li>Kurung kurawal <code>{ }</code> tidak seimbang.</li>
+</ul>
+
+<h4>2. Header tidak muncul saat dicek curl</h4>
+<p>Pastikan Nginx sudah reload dan cek domain HTTPS yang benar.</p>
+
+<pre><code>sudo nginx -t
+sudo systemctl reload nginx
+curl -I https://domainkita.com</code></pre>
+
+<p>Pastikan juga directive memakai <code>always</code>, supaya header tetap dikirim pada berbagai response.</p>
+
+<h4>3. Setelah ditambah HSTS, browser memaksa HTTPS</h4>
+<p>Itu memang fungsi HSTS. Karena itu HSTS hanya disarankan setelah HTTPS benar-benar stabil.</p>
+<p>Untuk tahap testing, kita bisa memakai <code>max-age</code> pendek lebih dulu, misalnya:</p>
+
+<pre><code>add_header Strict-Transport-Security "max-age=300" always;</code></pre>
+
+<h4>4. Website tampil error setelah menambahkan CSP</h4>
+<p>Jika menambahkan CSP sendiri dan website rusak, hapus dulu CSP tersebut lalu test ulang.</p>
+
+<pre><code>sudo nano /etc/nginx/sites-available/lms
+sudo nginx -t
+sudo systemctl reload nginx</code></pre>
+
+<p>Lesson ini memang tidak memasang CSP penuh agar tidak mengganggu aplikasi.</p>
+
+<h4>5. Ingin rollback konfigurasi</h4>
+<p>Gunakan file backup:</p>
+
+<pre><code>sudo cp /etc/nginx/sites-available/lms.backup-before-security-headers /etc/nginx/sites-available/lms
+sudo nginx -t
+sudo systemctl reload nginx</code></pre>
+
+<h4>6. Muncul 502 Bad Gateway setelah reload</h4>
+<p>Security headers biasanya bukan penyebab 502. Cek PM2 dan aplikasi LMS:</p>
+
+<pre><code>pm2 status
+curl http://localhost:3000
+pm2 logs lms --lines 50</code></pre>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms
+nginx -v
+sudo systemctl status nginx
+sudo cp /etc/nginx/sites-available/lms /etc/nginx/sites-available/lms.backup-before-security-headers
+sudo nano /etc/nginx/sites-available/lms
+sudo nginx -t
+sudo systemctl reload nginx
+curl -I https://domainkita.com
+pm2 status
+curl http://localhost:3000</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita menambahkan HTTP Security Headers dasar di Nginx.</p>
+<p>Header ini membantu memberi instruksi keamanan tambahan kepada browser, seperti membatasi iframe, mencegah MIME sniffing, mengatur referrer, dan membatasi fitur browser yang tidak diperlukan.</p>
+<p>Jika <code>curl -I https://domainkita.com</code> menampilkan header yang kita pasang, berarti konfigurasi sudah aktif.</p>`,
+          },
+          {
+            id: "l2l-35-video",
+            title: "Video HTTP Security Headers",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami HTTP security headers dasar pada Nginx untuk LMS production.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "32 min",      
           },
         ],
       },
       {
         id: "l2l-36",
         title: "Next.js production environment",
-        duration: "9 min",
+        duration: "30 min",
         summary:
-          "Mengelola environment variable agar konfigurasi production lebih rapi.",
+          "Mengelola environment variable production Next.js agar konfigurasi domain, API URL, mode aplikasi, dan secret tidak ditulis langsung di source code.",    
         order: 4,
         materials: [
           {
             id: "l2l-36-html",
             title: "Environment Production",
             type: "html",
-            description: "Menyiapkan file environment untuk production.",
+            description:
+              "Menyiapkan file environment production, mengecek variable, rebuild aplikasi, restart PM2, dan troubleshooting env yang belum terbaca.",   
             htmlContent:
-              "<h2>Next.js production env</h2><p>Pastikan environment variable production dipisahkan dari local development, misalnya untuk base URL API, domain, atau setting lain.</p>",
+              `<h2>Environment Production</h2>
+<p>Pada lesson ini, kita akan menyiapkan environment production untuk LMS berbasis Next.js.</p>
+<p>Materi Nginx, HTTPS, PM2, Gzip, caching, dan security headers sudah dibahas sebelumnya. Di lesson ini kita fokus pada pengelolaan konfigurasi aplikasi agar tidak hardcode di source code.</p>
+
+<h3>Apa itu environment variable?</h3>
+<p><strong>Environment variable</strong> adalah nilai konfigurasi yang dibaca aplikasi dari environment, bukan ditulis langsung di source code.</p>
+<p>Contoh yang biasanya disimpan sebagai environment variable:</p>
+<ul>
+  <li>URL aplikasi production</li>
+  <li>URL API backend</li>
+  <li>Mode aplikasi</li>
+  <li>Token atau secret tertentu</li>
+  <li>Konfigurasi integrasi pihak ketiga</li>
+</ul>
+
+<h3>Kenapa environment production penting?</h3>
+<ul>
+  <li>Konfigurasi local dan production bisa dipisahkan.</li>
+  <li>Secret tidak perlu ditulis langsung di source code.</li>
+  <li>Deployment lebih rapi dan mudah dipindah server.</li>
+  <li>Perubahan domain atau API URL lebih mudah dikelola.</li>
+  <li>Project lebih siap untuk production.</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<p>File environment untuk frontend Next.js biasanya berada di folder frontend, tempat file <code>package.json</code> berada.</p>
+<p>Untuk project LMS kita, command dijalankan dari folder:</p>
+
+<pre><code>cd /var/www/lms/frontend
+pwd</code></pre>
+
+<p>Cek isi folder:</p>
+
+<pre><code>ls -la</code></pre>
+
+<p>Pastikan ada file <code>package.json</code>. Jika tidak ada, berarti kita sedang berada di folder yang salah.</p>
+
+<h3>Langkah 1 — Cek file env yang sudah ada</h3>
+<p>Command ini dijalankan di folder frontend:</p>
+
+<pre><code>cd /var/www/lms/frontend
+ls -la | grep env</code></pre>
+
+<p>File yang mungkin muncul:</p>
+<ul>
+  <li><code>.env</code></li>
+  <li><code>.env.local</code></li>
+  <li><code>.env.production</code></li>
+  <li><code>.env.example</code></li>
+</ul>
+
+<h3>Langkah 2 — Buat file .env.production</h3>
+<p>Untuk production, kita bisa memakai file <code>.env.production</code>.</p>
+
+<pre><code>cd /var/www/lms/frontend
+nano .env.production</code></pre>
+
+<p>Contoh isi dasar:</p>
+
+<pre><code>NODE_ENV=production
+NEXT_PUBLIC_APP_URL=https://domainkita.com
+NEXT_PUBLIC_SITE_NAME=OdooCamp LMS
+NEXT_PUBLIC_API_BASE_URL=https://domainkita.com/api</code></pre>
+
+<p>Simpan file di nano:</p>
+<ul>
+  <li><code>CTRL + O</code> lalu Enter untuk save</li>
+  <li><code>CTRL + X</code> untuk keluar</li>
+</ul>
+
+<h3>Langkah 3 — Pahami perbedaan public dan private env</h3>
+<p>Di Next.js, variable yang diawali <code>NEXT_PUBLIC_</code> bisa ikut masuk ke browser.</p>
+<p>Artinya, jangan taruh secret, password, private key, atau token sensitif di variable yang memakai awalan <code>NEXT_PUBLIC_</code>.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Jenis env</th>
+      <th>Contoh</th>
+      <th>Boleh terlihat di browser?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Public</td>
+      <td><code>NEXT_PUBLIC_APP_URL</code></td>
+      <td>Ya</td>
+    </tr>
+    <tr>
+      <td>Private</td>
+      <td><code>DATABASE_URL</code></td>
+      <td>Tidak</td>
+    </tr>
+    <tr>
+      <td>Private</td>
+      <td><code>JWT_SECRET</code></td>
+      <td>Tidak</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Langkah 4 — Buat .env.example untuk dokumentasi</h3>
+<p>File <code>.env.production</code> biasanya tidak dimasukkan ke Git jika berisi konfigurasi khusus server.</p>
+<p>Agar developer lain tahu variable apa saja yang dibutuhkan, buat file contoh:</p>
+
+<pre><code>cd /var/www/lms/frontend
+nano .env.example</code></pre>
+
+<p>Contoh isi:</p>
+
+<pre><code>NODE_ENV=production
+NEXT_PUBLIC_APP_URL=https://your-domain.com
+NEXT_PUBLIC_SITE_NAME=Your LMS Name
+NEXT_PUBLIC_API_BASE_URL=https://your-domain.com/api</code></pre>
+
+<h3>Langkah 5 — Pastikan file env production tidak ikut Git jika berisi secret</h3>
+<p>Cek file <code>.gitignore</code>:</p>
+
+<pre><code>cd /var/www/lms/frontend
+cat .gitignore</code></pre>
+
+<p>Jika belum ada aturan env, tambahkan:</p>
+
+<pre><code>nano .gitignore</code></pre>
+
+<p>Contoh aturan:</p>
+
+<pre><code>.env
+.env.local
+.env.production
+!.env.example</code></pre>
+
+<p>Artinya file env asli tidak ikut commit, tetapi file contoh tetap boleh ikut Git.</p>
+
+<h3>Langkah 6 — Rebuild aplikasi setelah env berubah</h3>
+<p>Untuk variable <code>NEXT_PUBLIC_</code>, perubahan biasanya perlu build ulang agar terbaca di bundle frontend.</p>
+
+<pre><code>cd /var/www/lms/frontend
+npm run build</code></pre>
+
+<p>Jika build berhasil, restart aplikasi di PM2:</p>
+
+<pre><code>pm2 restart lms
+pm2 status</code></pre>
+
+<h3>Langkah 7 — Cek log PM2</h3>
+<p>Jika setelah restart aplikasi error, lihat log:</p>
+
+<pre><code>pm2 logs lms --lines 100</code></pre>
+
+<p>Untuk keluar dari log:</p>
+
+<pre><code>CTRL + C</code></pre>
+
+<h3>Langkah 8 — Test aplikasi dari VPS dan browser</h3>
+<p>Cek dari VPS:</p>
+
+<pre><code>curl http://localhost:3000
+curl -I https://domainkita.com</code></pre>
+
+<p>Cek dari browser PC:</p>
+
+<pre><code>https://domainkita.com</code></pre>
+
+<h3>Langkah 9 — Cek env yang tersedia di shell</h3>
+<p>Untuk melihat variable environment di shell saat ini:</p>
+
+<pre><code>printenv | grep NEXT_PUBLIC</code></pre>
+
+<p>Namun perlu dipahami: variable di file <code>.env.production</code> dibaca oleh Next.js saat build/runtime sesuai mekanisme framework, bukan selalu tampil di <code>printenv</code>.</p>
+
+<h3>Catatan penting untuk production</h3>
+<ul>
+  <li>Jangan commit file env yang berisi secret.</li>
+  <li>Gunakan <code>.env.example</code> sebagai dokumentasi.</li>
+  <li>Setelah mengubah env public, lakukan <code>npm run build</code> ulang.</li>
+  <li>Setelah build, restart process PM2.</li>
+  <li>Pastikan domain di env sesuai dengan domain production.</li>
+</ul>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. File package.json tidak ditemukan</h4>
+<p>Artinya kita berada di folder yang salah.</p>
+
+<pre><code>cd /var/www/lms/frontend
+ls -la</code></pre>
+
+<p>Pastikan file <code>package.json</code> ada di folder tersebut.</p>
+
+<h4>2. Env sudah diubah tetapi website belum berubah</h4>
+<p>Untuk variable <code>NEXT_PUBLIC_</code>, lakukan build ulang dan restart PM2:</p>
+
+<pre><code>cd /var/www/lms/frontend
+npm run build
+pm2 restart lms</code></pre>
+
+<h4>3. Build gagal setelah menambah env</h4>
+<p>Cek pesan error:</p>
+
+<pre><code>cd /var/www/lms/frontend
+npm run build</code></pre>
+
+<p>Kesalahan umum:</p>
+<ul>
+  <li>Nama variable salah ketik.</li>
+  <li>Value mengandung spasi atau karakter khusus tanpa format yang benar.</li>
+  <li>Kode aplikasi memanggil env yang belum didefinisikan.</li>
+</ul>
+
+<h4>4. Secret terlihat di browser</h4>
+<p>Jika secret memakai awalan <code>NEXT_PUBLIC_</code>, berarti secret tersebut berisiko terekspos ke browser.</p>
+<p>Solusi: pindahkan secret ke variable tanpa awalan <code>NEXT_PUBLIC_</code> dan hanya gunakan di server-side code.</p>
+
+<h4>5. PM2 online tetapi env lama masih terbaca</h4>
+<p>Restart PM2 setelah build:</p>
+
+<pre><code>pm2 restart lms
+pm2 logs lms --lines 50</code></pre>
+
+<p>Jika masih belum berubah, lakukan build ulang:</p>
+
+<pre><code>cd /var/www/lms/frontend
+npm run build
+pm2 restart lms</code></pre>
+
+<h4>6. Tidak sengaja commit file .env.production</h4>
+<p>Tambahkan file env ke <code>.gitignore</code>, lalu hentikan tracking Git jika sudah terlanjur ter-track:</p>
+
+<pre><code>cd /var/www/lms/frontend
+git rm --cached .env.production
+git status</code></pre>
+
+<p>Setelah itu commit perubahan <code>.gitignore</code>. Jika file berisi secret pernah masuk Git, anggap secret tersebut bocor dan ganti nilainya.</p>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms/frontend
+ls -la
+ls -la | grep env
+nano .env.production
+nano .env.example
+cat .gitignore
+nano .gitignore
+npm run build
+pm2 restart lms
+pm2 status
+pm2 logs lms --lines 100
+curl http://localhost:3000
+curl -I https://domainkita.com
+printenv | grep NEXT_PUBLIC</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita memisahkan konfigurasi production ke file environment.</p>
+<p>Environment variable membantu kita mengelola domain, API URL, mode aplikasi, dan konfigurasi lain tanpa hardcode langsung di source code.</p>
+<p>Setiap kali env public berubah, ingat workflow penting ini:</p>
+
+<pre><code>edit env
+npm run build
+pm2 restart lms
+test domain</code></pre>`,
+          },
+          {
+            id: "l2l-36-video",
+            title: "Video Environment Production",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami pengelolaan environment production pada LMS Next.js.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "30 min",   
           },
         ],
       },
