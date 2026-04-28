@@ -785,6 +785,199 @@ SELECT id, course_id, slug, title FROM lessons;</code></pre>
           },
         ],
       },
+      {
+        id: "s2d-7",
+        title: "Seed Data Awal LMS",
+        duration: "32 min",
+        summary:
+          "Membuat seed data awal untuk tabel courses dan lessons agar database LMS langsung memiliki data awal yang bisa dibaca aplikasi.",
+        order: 7,
+        materials: [
+          {
+            id: "s2d-7-html",
+            title: "Seed Data Awal LMS",
+            type: "html",
+            description:
+              "Membuat file seed SQL, menjalankannya ke PostgreSQL, mengecek hasil insert, dan memperbaiki error umum saat seeding data awal LMS.",
+            htmlContent: `
+<h2>Seed Data Awal LMS</h2>
+<p>Pada lesson ini, kita akan membuat seed data awal untuk database LMS.</p>
+<p>Lesson sebelumnya sudah membuat schema database. Sekarang kita isi database dengan data awal agar aplikasi punya course dan lesson yang bisa dibaca.</p>
+
+<h3>Apa itu seed data?</h3>
+<p><strong>Seed data</strong> adalah data awal yang dimasukkan ke database untuk kebutuhan development, testing, atau setup awal production.</p>
+<p>Contohnya:</p>
+<ul>
+  <li>Course default</li>
+  <li>Lesson awal</li>
+  <li>Role awal</li>
+  <li>User admin awal jika diperlukan</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<p>Command dijalankan dari folder frontend LMS karena folder <code>database</code> kita simpan di sana.</p>
+
+<pre><code>cd /var/www/lms/frontend
+pwd</code></pre>
+
+<p>Pastikan folder database sudah ada:</p>
+
+<pre><code>ls -la database</code></pre>
+
+<p>Jika belum ada:</p>
+
+<pre><code>mkdir -p database</code></pre>
+
+<h3>Langkah 1 — Buat file seed.sql</h3>
+
+<pre><code>cd /var/www/lms/frontend
+nano database/seed.sql</code></pre>
+
+<h3>Langkah 2 — Isi seed data course</h3>
+
+<pre><code>INSERT INTO courses (slug, title, description, access_type, is_published)
+VALUES
+  (
+    'from-localhost-to-live-lms',
+    'From Localhost to Live LMS',
+    'Course deployment LMS dari localhost sampai live di VPS.',
+    'free',
+    true
+  ),
+  (
+    'from-static-lms-to-dynamic-lms',
+    'From Static LMS to Dynamic LMS',
+    'Course lanjutan untuk menambahkan database dan member system ke LMS.',
+    'free',
+    true
+  )
+ON CONFLICT (slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  description = EXCLUDED.description,
+  access_type = EXCLUDED.access_type,
+  is_published = EXCLUDED.is_published,
+  updated_at = NOW();</code></pre>
+
+<h3>Langkah 3 — Isi seed data lesson</h3>
+
+<pre><code>INSERT INTO lessons (course_id, slug, title, order_no)
+SELECT id, 'intro', 'Introduction', 1
+FROM courses
+WHERE slug = 'from-static-lms-to-dynamic-lms'
+ON CONFLICT (course_id, slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  order_no = EXCLUDED.order_no,
+  updated_at = NOW();
+
+INSERT INTO lessons (course_id, slug, title, order_no)
+SELECT id, 'database-architecture', 'Arsitektur Database LMS', 2
+FROM courses
+WHERE slug = 'from-static-lms-to-dynamic-lms'
+ON CONFLICT (course_id, slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  order_no = EXCLUDED.order_no,
+  updated_at = NOW();
+
+INSERT INTO lessons (course_id, slug, title, order_no)
+SELECT id, 'postgresql-setup', 'Setup PostgreSQL untuk LMS', 3
+FROM courses
+WHERE slug = 'from-static-lms-to-dynamic-lms'
+ON CONFLICT (course_id, slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  order_no = EXCLUDED.order_no,
+  updated_at = NOW();</code></pre>
+
+<h3>Langkah 4 — Jalankan seed ke database</h3>
+
+<pre><code>cd /var/www/lms/frontend
+psql -h localhost -U lms_user -d lms_db -f database/seed.sql</code></pre>
+
+<h3>Langkah 5 — Cek hasil seed</h3>
+
+<pre><code>psql -h localhost -U lms_user -d lms_db</code></pre>
+
+<p>Di dalam prompt PostgreSQL:</p>
+
+<pre><code>SELECT id, slug, title, access_type FROM courses;
+
+SELECT
+  lessons.id,
+  courses.slug AS course_slug,
+  lessons.slug AS lesson_slug,
+  lessons.title,
+  lessons.order_no
+FROM lessons
+JOIN courses ON courses.id = lessons.course_id
+ORDER BY courses.slug, lessons.order_no;</code></pre>
+
+<p>Keluar dari PostgreSQL:</p>
+
+<pre><code>\\q</code></pre>
+
+<h3>Kenapa memakai ON CONFLICT?</h3>
+<p><code>ON CONFLICT</code> membuat seed lebih aman dijalankan berkali-kali.</p>
+<p>Jika data belum ada, PostgreSQL akan insert. Jika data sudah ada, PostgreSQL akan update data yang sama.</p>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. psql: command not found</h4>
+
+<pre><code>sudo apt update
+sudo apt install postgresql-client -y</code></pre>
+
+<h4>2. relation "courses" does not exist</h4>
+<p>Schema belum dijalankan. Jalankan dulu schema:</p>
+
+<pre><code>cd /var/www/lms/frontend
+psql -h localhost -U lms_user -d lms_db -f database/schema.sql</code></pre>
+
+<h4>3. permission denied for table courses</h4>
+<p>Berikan permission ke user database:</p>
+
+<pre><code>sudo -i -u postgres
+psql
+\\c lms_db
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO lms_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO lms_user;
+\\q
+exit</code></pre>
+
+<h4>4. duplicate key value violates unique constraint</h4>
+<p>Pastikan query memakai <code>ON CONFLICT</code> pada field unique seperti <code>slug</code>.</p>
+
+<h4>5. Lesson tidak masuk</h4>
+<p>Pastikan course dengan slug yang dipakai sudah ada.</p>
+
+<pre><code>SELECT id, slug, title FROM courses;</code></pre>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms/frontend
+mkdir -p database
+nano database/seed.sql
+psql -h localhost -U lms_user -d lms_db -f database/seed.sql
+psql -h localhost -U lms_user -d lms_db
+SELECT id, slug, title FROM courses;
+SELECT id, course_id, slug, title FROM lessons;
+\\q</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita membuat seed data awal agar database LMS tidak kosong.</p>
+<p>Dengan seed data, aplikasi bisa mulai membaca course dan lesson dari PostgreSQL.</p>
+<p>Di lesson berikutnya, kita akan mulai membuat API route untuk membaca data course dari database.</p>
+`,
+          },
+          {
+            id: "s2d-7-video",
+            title: "Video Seed Data Awal LMS",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami seed data awal PostgreSQL pada LMS dynamic.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "32 min",
+          },
+        ],
+      },
     ],
   },
 ];
@@ -797,7 +990,7 @@ export const fromStaticLmsToDynamicLmsCourse: Course = {
   price: null,
   accessType: "free",
   level: "Beginner",
-  totalDuration: "1 Module • 6 Lessons",
+  totalDuration: "1 Module • 7 Lessons",
   shortDescription:
     "Mengubah LMS static menjadi LMS dynamic dengan database, login, member area, course assignment, dan progress tracking.",
   description:
