@@ -1,10 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   DynamicCourse,
   fetchDynamicCourses,
 } from "@/lib/course-api";
+
+<Link
+  href={"/dynamic-courses/" + course.slug}
+  className="mt-4 inline-block text-sm font-semibold underline"
+>
+  Lihat detail course
+</Link>
 
 export function DynamicCourseList() {
   const [courses, setCourses] = useState<DynamicCourse[]>([]);

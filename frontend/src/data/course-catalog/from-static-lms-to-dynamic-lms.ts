@@ -1531,6 +1531,554 @@ pm2 logs lms --lines 80</code></pre>
           },
         ],
       },
+      {
+        id: "s2d-10",
+        title: "Halaman Detail Course Dynamic",
+        duration: "38 min",
+        summary:
+          "Membuat halaman detail course berdasarkan slug yang membaca data course dan lessons dari PostgreSQL melalui API route.",
+        order: 10,
+        materials: [
+          {
+            id: "s2d-10-html",
+            title: "Halaman Detail Course Dynamic",
+            type: "html",
+            description:
+              "Membuat API detail course by slug, halaman dynamic route, validasi response, dan troubleshooting jika slug atau lesson tidak terbaca.",
+            htmlContent: `
+<h2>Halaman Detail Course Dynamic</h2>
+<p>Pada lesson ini, kita akan membuat halaman detail course dynamic berdasarkan <code>slug</code>.</p>
+<p>Lesson sebelumnya sudah menampilkan daftar courses dari API. Sekarang, saat user memilih satu course, aplikasi akan membaca detail course dan daftar lessons dari PostgreSQL.</p>
+
+<h3>Target lesson</h3>
+<ul>
+  <li>Membuat API route detail course berdasarkan slug.</li>
+  <li>Mengambil data course dan lessons dari PostgreSQL.</li>
+  <li>Membuat halaman dynamic route <code>/dynamic-courses/[slug]</code>.</li>
+  <li>Menampilkan informasi course dan daftar lesson.</li>
+  <li>Menangani kondisi course tidak ditemukan.</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<p>Semua command dijalankan dari folder frontend LMS:</p>
+
+<pre><code>cd /var/www/lms/frontend
+pwd</code></pre>
+
+<p>Pastikan ada file <code>package.json</code>:</p>
+
+<pre><code>ls -la</code></pre>
+
+<h3>Langkah 1 — Pastikan API courses sebelumnya berjalan</h3>
+
+<pre><code>npm run dev</code></pre>
+
+<p>Dari terminal lain, test:</p>
+
+<pre><code>curl http://localhost:3000/api/courses</code></pre>
+
+<p>Jika daftar course muncul, kita bisa lanjut membuat API detail.</p>
+
+<h3>Langkah 2 — Buat API route detail course</h3>
+<p>Untuk App Router Next.js, buat folder route dynamic:</p>
+
+<pre><code>cd /var/www/lms/frontend
+mkdir -p src/app/api/courses/[slug]
+nano src/app/api/courses/[slug]/route.ts</code></pre>
+
+<h3>Langkah 3 — Isi API detail course</h3>
+
+<pre><code>import { NextResponse } from "next/server";
+import { pool } from "@/lib/db";
+
+type RouteParams = {
+  params: {
+    slug: string;
+  };
+};
+
+export async function GET(
+  request: Request,
+  { params }: RouteParams
+) {
+  try {
+    const courseResult = await pool.query(
+      "SELECT id, slug, title, description, access_type, is_published FROM courses WHERE slug = $1 AND is_published = true LIMIT 1",
+      [params.slug]
+    );
+
+    const course = courseResult.rows[0];
+
+    if (!course) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Course not found",
+        },
+        { status: 404 }
+      );
+    }
+
+    const lessonsResult = await pool.query(
+      "SELECT id, slug, title, order_no FROM lessons WHERE course_id = $1 ORDER BY order_no ASC",
+      [course.id]
+    );
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...course,
+        lessons: lessonsResult.rows,
+      },
+    });
+  } catch (error) {
+    console.error("GET /api/courses/[slug] error:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Failed to load course detail",
+      },
+      { status: 500 }
+    );
+  }
+}</code></pre>
+
+<h3>Langkah 4 — Test API detail course</h3>
+
+<pre><code>curl http://localhost:3000/api/courses/from-static-lms-to-dynamic-lms</code></pre>
+
+<h3>Langkah 5 — Buat halaman dynamic route</h3>
+
+<pre><code>mkdir -p src/app/dynamic-courses/[slug]
+nano src/app/dynamic-courses/[slug]/page.tsx</code></pre>
+
+<p>Isi file:</p>
+
+<pre><code>import { notFound } from "next/navigation";
+
+type PageProps = {
+  params: {
+    slug: string;
+  };
+};
+
+async function getCourse(slug: string) {
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  const response = await fetch(baseUrl + "/api/courses/" + slug, {
+    cache: "no-store",
+  });
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error("Failed to load course detail");
+  }
+
+  const result = await response.json();
+  return result.data;
+}
+
+export default async function DynamicCourseDetailPage({
+  params,
+}: PageProps) {
+  const course = await getCourse(params.slug);
+
+  if (!course) {
+    notFound();
+  }
+
+  return (
+    &lt;main className="mx-auto max-w-4xl p-6"&gt;
+      &lt;p className="mb-2 text-sm uppercase opacity-70"&gt;
+        {course.access_type}
+      &lt;/p&gt;
+
+      &lt;h1 className="mb-4 text-3xl font-bold"&gt;
+        {course.title}
+      &lt;/h1&gt;
+
+      &lt;p className="mb-8 opacity-80"&gt;
+        {course.description}
+      &lt;/p&gt;
+
+      &lt;section&gt;
+        &lt;h2 className="mb-4 text-xl font-semibold"&gt;
+          Lessons
+        &lt;/h2&gt;
+
+        {course.lessons.length === 0 ? (
+          &lt;p&gt;Belum ada lesson untuk course ini.&lt;/p&gt;
+        ) : (
+          &lt;ol className="space-y-3"&gt;
+            {course.lessons.map((lesson: any) =&gt; (
+              &lt;li
+                key={lesson.id}
+                className="rounded-lg border p-4"
+              &gt;
+                &lt;span className="text-sm opacity-70"&gt;
+                  Lesson {lesson.order_no}
+                &lt;/span&gt;
+                &lt;h3 className="font-semibold"&gt;
+                  {lesson.title}
+                &lt;/h3&gt;
+              &lt;/li&gt;
+            ))}
+          &lt;/ol&gt;
+        )}
+      &lt;/section&gt;
+    &lt;/main&gt;
+  );
+}</code></pre>
+
+<h3>Langkah 6 — Tambahkan link dari daftar course</h3>
+<p>Buka komponen daftar course:</p>
+
+<pre><code>nano src/components/courses/DynamicCourseList.tsx</code></pre>
+
+<p>Tambahkan import:</p>
+
+<pre><code>import Link from "next/link";</code></pre>
+
+<p>Tambahkan link di dalam card:</p>
+
+<pre><code>&lt;Link
+  href={"/dynamic-courses/" + course.slug}
+  className="mt-4 inline-block text-sm font-semibold underline"
+&gt;
+  Lihat detail course
+&lt;/Link&gt;</code></pre>
+
+<h3>Langkah 7 — Test dari browser</h3>
+
+<pre><code>npm run dev</code></pre>
+
+<p>Buka:</p>
+
+<pre><code>http://localhost:3000/dynamic-courses/from-static-lms-to-dynamic-lms</code></pre>
+
+<h3>Langkah 8 — Test build production</h3>
+
+<pre><code>npm run build
+pm2 restart lms
+pm2 logs lms --lines 80</code></pre>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. API detail menghasilkan 404</h4>
+<p>Pastikan slug course benar:</p>
+
+<pre><code>psql -h localhost -U lms_user -d lms_db
+SELECT id, slug, title, is_published FROM courses;
+\\q</code></pre>
+
+<h4>2. Lessons kosong</h4>
+<p>Cek isi tabel lessons:</p>
+
+<pre><code>psql -h localhost -U lms_user -d lms_db
+SELECT id, course_id, slug, title, order_no FROM lessons;
+\\q</code></pre>
+
+<h4>3. NEXT_PUBLIC_APP_URL belum tersedia</h4>
+<p>Tambahkan ke file environment:</p>
+
+<pre><code>NEXT_PUBLIC_APP_URL=http://localhost:3000</code></pre>
+
+<p>Untuk production:</p>
+
+<pre><code>NEXT_PUBLIC_APP_URL=https://domainkita.com</code></pre>
+
+<h4>4. Build gagal karena JSX ditulis di file .ts</h4>
+<p>Pastikan halaman React memakai ekstensi <code>.tsx</code>.</p>
+
+<pre><code>ls -la src/app/dynamic-courses/[slug]</code></pre>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms/frontend
+mkdir -p src/app/api/courses/[slug]
+nano src/app/api/courses/[slug]/route.ts
+curl http://localhost:3000/api/courses/from-static-lms-to-dynamic-lms
+mkdir -p src/app/dynamic-courses/[slug]
+nano src/app/dynamic-courses/[slug]/page.tsx
+nano src/components/courses/DynamicCourseList.tsx
+npm run dev
+npm run build
+pm2 restart lms</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita membuat halaman detail course dynamic berdasarkan slug.</p>
+<p>Sekarang LMS sudah bisa membaca daftar course dan detail course dari PostgreSQL melalui API route.</p>
+<p>Di lesson berikutnya, kita akan mulai menyiapkan pondasi register dan login member.</p>
+`,
+          },
+          {
+            id: "s2d-10-video",
+            title: "Video Halaman Detail Course Dynamic",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami halaman detail course dynamic berdasarkan slug dari PostgreSQL.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "38 min",
+          },
+        ],
+      },
+      {
+        id: "s2d-11",
+        title: "Pondasi Register Member",
+        duration: "38 min",
+        summary:
+          "Membuat pondasi register member dengan API route Next.js, validasi input, hash password, dan penyimpanan user ke PostgreSQL.",
+        order: 11,
+        materials: [
+          {
+            id: "s2d-11-html",
+            title: "Pondasi Register Member",
+            type: "html",
+            description:
+              "Membuat API register member, install bcryptjs, validasi email, hash password, simpan user ke PostgreSQL, dan test endpoint register.",
+            htmlContent: `
+<h2>Pondasi Register Member</h2>
+<p>Pada lesson ini, kita mulai masuk ke bagian member system.</p>
+<p>Kita akan membuat pondasi register member agar user baru bisa disimpan ke tabel <code>users</code> di PostgreSQL.</p>
+
+<h3>Target lesson</h3>
+<ul>
+  <li>Menginstall library untuk hash password.</li>
+  <li>Membuat API route register.</li>
+  <li>Validasi input dasar.</li>
+  <li>Mencegah email duplicate.</li>
+  <li>Menyimpan password dalam bentuk hash, bukan plain text.</li>
+  <li>Mengetes register dengan curl.</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<p>Semua command dijalankan dari folder frontend LMS:</p>
+
+<pre><code>cd /var/www/lms/frontend
+pwd</code></pre>
+
+<p>Pastikan ada file <code>package.json</code>:</p>
+
+<pre><code>ls -la</code></pre>
+
+<h3>Langkah 1 — Pastikan tabel users sudah ada</h3>
+<p>Masuk ke database:</p>
+
+<pre><code>psql -h localhost -U lms_user -d lms_db</code></pre>
+
+<p>Cek tabel:</p>
+
+<pre><code>\\dt</code></pre>
+
+<p>Cek struktur tabel users:</p>
+
+<pre><code>\\d users</code></pre>
+
+<p>Keluar:</p>
+
+<pre><code>\\q</code></pre>
+
+<h3>Langkah 2 — Install bcryptjs</h3>
+<p>Kita tidak boleh menyimpan password asli di database. Password harus di-hash.</p>
+
+<pre><code>npm install bcryptjs</code></pre>
+
+<p>Jika memakai TypeScript, install type definition:</p>
+
+<pre><code>npm install -D @types/bcryptjs</code></pre>
+
+<h3>Langkah 3 — Buat API route register</h3>
+
+<pre><code>mkdir -p src/app/api/auth/register
+nano src/app/api/auth/register/route.ts</code></pre>
+
+<h3>Langkah 4 — Isi API register</h3>
+
+<pre><code>import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
+import { pool } from "@/lib/db";
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const name = String(body.name || "").trim();
+    const email = String(body.email || "").trim().toLowerCase();
+    const password = String(body.password || "");
+
+    if (!name || !email || !password) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Name, email, and password are required",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (password.length &lt; 8) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Password must be at least 8 characters",
+        },
+        { status: 400 }
+      );
+    }
+
+    const existingUser = await pool.query(
+      "SELECT id FROM users WHERE email = $1 LIMIT 1",
+      [email]
+    );
+
+    if (existingUser.rows.length &gt; 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Email is already registered",
+        },
+        { status: 409 }
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    const result = await pool.query(
+      "INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role, created_at",
+      [name, email, passwordHash, "member"]
+    );
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: result.rows[0],
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("POST /api/auth/register error:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Failed to register member",
+      },
+      { status: 500 }
+    );
+  }
+}</code></pre>
+
+<h3>Langkah 5 — Jalankan development server</h3>
+
+<pre><code>npm run dev</code></pre>
+
+<h3>Langkah 6 — Test register dengan curl</h3>
+<p>Buka terminal lain dari folder frontend LMS, lalu jalankan:</p>
+
+<pre><code>curl -X POST http://localhost:3000/api/auth/register ^
+  -H "Content-Type: application/json" ^
+  -d "{\\"name\\":\\"Demo Member\\",\\"email\\":\\"member@example.com\\",\\"password\\":\\"password123\\"}"</code></pre>
+
+<p>Jika memakai Linux/WSL:</p>
+
+<pre><code>curl -X POST http://localhost:3000/api/auth/register \\
+  -H "Content-Type: application/json" \\
+  -d '{"name":"Demo Member","email":"member@example.com","password":"password123"}'</code></pre>
+
+<h3>Langkah 7 — Cek data user di database</h3>
+
+<pre><code>psql -h localhost -U lms_user -d lms_db</code></pre>
+
+<p>Jalankan:</p>
+
+<pre><code>SELECT id, name, email, role, created_at FROM users;</code></pre>
+
+<p>Keluar:</p>
+
+<pre><code>\\q</code></pre>
+
+<h3>Catatan keamanan penting</h3>
+<ul>
+  <li>Jangan pernah menyimpan password asli.</li>
+  <li>Jangan mengembalikan <code>password_hash</code> ke frontend.</li>
+  <li>Gunakan HTTPS di production.</li>
+  <li>Validasi input harus diperketat pada tahap berikutnya.</li>
+  <li>Register API ini masih pondasi, belum login session.</li>
+</ul>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. Module not found: bcryptjs</h4>
+
+<pre><code>npm install bcryptjs
+npm install -D @types/bcryptjs</code></pre>
+
+<h4>2. relation "users" does not exist</h4>
+<p>Schema belum dijalankan.</p>
+
+<pre><code>psql -h localhost -U lms_user -d lms_db -f database/schema.sql</code></pre>
+
+<h4>3. Email is already registered</h4>
+<p>Artinya email sudah ada di database. Gunakan email lain atau cek tabel users:</p>
+
+<pre><code>psql -h localhost -U lms_user -d lms_db
+SELECT id, email FROM users;
+\\q</code></pre>
+
+<h4>4. Permission denied for table users</h4>
+
+<pre><code>sudo -i -u postgres
+psql
+\\c lms_db
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO lms_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO lms_user;
+\\q
+exit</code></pre>
+
+<h4>5. API 500 Internal Server Error</h4>
+<p>Cek terminal development atau PM2 log:</p>
+
+<pre><code>pm2 logs lms --lines 100</code></pre>
+
+<h4>6. Body JSON tidak terbaca</h4>
+<p>Pastikan request memakai header:</p>
+
+<pre><code>Content-Type: application/json</code></pre>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms/frontend
+npm install bcryptjs
+npm install -D @types/bcryptjs
+mkdir -p src/app/api/auth/register
+nano src/app/api/auth/register/route.ts
+npm run dev
+curl -X POST http://localhost:3000/api/auth/register -H "Content-Type: application/json" -d '{"name":"Demo Member","email":"member@example.com","password":"password123"}'
+psql -h localhost -U lms_user -d lms_db
+SELECT id, name, email, role, created_at FROM users;
+\\q</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita membuat pondasi register member.</p>
+<p>User baru sekarang bisa dikirim melalui API, password di-hash dengan bcrypt, lalu data member disimpan ke PostgreSQL.</p>
+<p>Di lesson berikutnya, kita akan mulai membuat pondasi login member.</p>
+`,
+          },
+          {
+            id: "s2d-11-video",
+            title: "Video Pondasi Register Member",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami pembuatan API register member dengan Next.js dan PostgreSQL.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "38 min",
+          },
+        ],
+      },
     ],
   },
 ];
@@ -1543,7 +2091,7 @@ export const fromStaticLmsToDynamicLmsCourse: Course = {
   price: null,
   accessType: "free",
   level: "Beginner",
-  totalDuration: "1 Module • 9 Lessons",
+  totalDuration: "1 Module • 10 Lessons",
   shortDescription:
     "Mengubah LMS static menjadi LMS dynamic dengan database, login, member area, course assignment, dan progress tracking.",
   description:
