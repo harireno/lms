@@ -978,6 +978,559 @@ SELECT id, course_id, slug, title FROM lessons;
           },
         ],
       },
+      {
+        id: "s2d-8",
+        title: "API Route Courses dari Database",
+        duration: "35 min",
+        summary:
+          "Membuat API route Next.js untuk membaca data courses dan lessons langsung dari PostgreSQL agar LMS mulai benar-benar dynamic.",
+        order: 8,
+        materials: [
+          {
+            id: "s2d-8-html",
+            title: "API Route Courses dari Database",
+            type: "html",
+            description:
+              "Membuat endpoint API courses, membaca data dari PostgreSQL, mengetes response JSON, dan troubleshooting koneksi database.",
+            htmlContent: `
+<h2>API Route Courses dari Database</h2>
+<p>Pada lesson ini, kita mulai membaca data course dari PostgreSQL melalui API route Next.js.</p>
+<p>Lesson sebelumnya sudah membuat schema dan seed data. Sekarang kita buat endpoint agar aplikasi bisa mengambil data dari database, bukan lagi hanya dari file static.</p>
+
+<h3>Target lesson</h3>
+<ul>
+  <li>Membuat API route untuk daftar courses.</li>
+  <li>Membaca data dari PostgreSQL.</li>
+  <li>Menampilkan response JSON.</li>
+  <li>Mengetes API dengan browser dan curl.</li>
+  <li>Memahami troubleshooting error koneksi database.</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<p>Semua command dijalankan dari folder frontend LMS:</p>
+
+<pre><code>cd /var/www/lms/frontend
+pwd</code></pre>
+
+<p>Pastikan ada file <code>package.json</code>:</p>
+
+<pre><code>ls -la</code></pre>
+
+<h3>Langkah 1 — Pastikan dependency pg sudah terinstall</h3>
+
+<pre><code>npm list pg</code></pre>
+
+<p>Jika belum ada, install:</p>
+
+<pre><code>npm install pg</code></pre>
+
+<p>Jika memakai TypeScript, install type definition:</p>
+
+<pre><code>npm install -D @types/pg</code></pre>
+
+<h3>Langkah 2 — Pastikan DATABASE_URL tersedia</h3>
+<p>Cek file environment:</p>
+
+<pre><code>ls -la | grep env</code></pre>
+
+<p>Pastikan <code>.env.local</code> atau <code>.env.production</code> memiliki:</p>
+
+<pre><code>DATABASE_URL=postgresql://lms_user:ganti_password_kuat_di_sini@localhost:5432/lms_db</code></pre>
+
+<p>Jangan commit file environment yang berisi password asli ke Git.</p>
+
+<h3>Langkah 3 — Buat helper koneksi database</h3>
+<p>Buat folder library jika belum ada:</p>
+
+<pre><code>mkdir -p src/lib</code></pre>
+
+<p>Buat file:</p>
+
+<pre><code>nano src/lib/db.ts</code></pre>
+
+<p>Isi file:</p>
+
+<pre><code>import { Pool } from "pg";
+
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error("DATABASE_URL is not defined");
+}
+
+export const pool = new Pool({
+  connectionString,
+});</code></pre>
+
+<h3>Langkah 4 — Buat API route courses</h3>
+<p>Untuk App Router Next.js, buat folder:</p>
+
+<pre><code>mkdir -p src/app/api/courses
+nano src/app/api/courses/route.ts</code></pre>
+
+<p>Jika struktur project kamu memakai <code>app/</code> langsung tanpa <code>src/</code>, gunakan path:</p>
+
+<pre><code>mkdir -p app/api/courses
+nano app/api/courses/route.ts</code></pre>
+
+<p>Isi file route:</p>
+
+<pre><code>import { NextResponse } from "next/server";
+import { pool } from "@/lib/db";
+
+export async function GET() {
+  try {
+    const result = await pool.query(&#96;
+      SELECT
+        id,
+        slug,
+        title,
+        description,
+        access_type,
+        is_published,
+        created_at,
+        updated_at
+      FROM courses
+      WHERE is_published = true
+      ORDER BY id ASC
+    &#96;);
+
+    return NextResponse.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error("GET /api/courses error:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Failed to load courses",
+      },
+      { status: 500 }
+    );
+  }
+}</code></pre>
+
+<h3>Langkah 5 — Jalankan development server</h3>
+
+<pre><code>npm run dev</code></pre>
+
+<p>Test dari browser:</p>
+
+<pre><code>http://localhost:3000/api/courses</code></pre>
+
+<p>Atau dari terminal:</p>
+
+<pre><code>curl http://localhost:3000/api/courses</code></pre>
+
+<h3>Langkah 6 — Test di VPS production</h3>
+<p>Jika aplikasi berjalan via PM2:</p>
+
+<pre><code>npm run build
+pm2 restart lms
+pm2 logs lms --lines 80</code></pre>
+
+<p>Test API production:</p>
+
+<pre><code>curl https://domainkita.com/api/courses</code></pre>
+
+<h3>Langkah 7 — Expected response</h3>
+
+<pre><code>{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "slug": "from-localhost-to-live-lms",
+      "title": "From Localhost to Live LMS",
+      "description": "...",
+      "access_type": "free",
+      "is_published": true
+    }
+  ]
+}</code></pre>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. Error DATABASE_URL is not defined</h4>
+<p>Pastikan env tersedia dan restart server setelah mengubah env.</p>
+
+<pre><code>cat .env.local
+cat .env.production
+npm run build
+pm2 restart lms</code></pre>
+
+<h4>2. Module not found: Can't resolve pg</h4>
+
+<pre><code>npm install pg
+npm install -D @types/pg</code></pre>
+
+<h4>3. relation "courses" does not exist</h4>
+<p>Schema belum dijalankan.</p>
+
+<pre><code>psql -h localhost -U lms_user -d lms_db -f database/schema.sql</code></pre>
+
+<h4>4. Data kosong</h4>
+<p>Seed data belum dijalankan atau course belum published.</p>
+
+<pre><code>psql -h localhost -U lms_user -d lms_db -f database/seed.sql
+psql -h localhost -U lms_user -d lms_db
+SELECT id, slug, title, is_published FROM courses;
+\\q</code></pre>
+
+<h4>5. Permission denied for table courses</h4>
+
+<pre><code>sudo -i -u postgres
+psql
+\\c lms_db
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO lms_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO lms_user;
+\\q
+exit</code></pre>
+
+<h4>6. API 500 Internal Server Error</h4>
+<p>Cek log aplikasi:</p>
+
+<pre><code>pm2 logs lms --lines 100</code></pre>
+
+<p>Jika masih development:</p>
+
+<pre><code>npm run dev</code></pre>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms/frontend
+npm install pg
+npm install -D @types/pg
+mkdir -p src/lib
+nano src/lib/db.ts
+mkdir -p src/app/api/courses
+nano src/app/api/courses/route.ts
+npm run dev
+curl http://localhost:3000/api/courses
+npm run build
+pm2 restart lms
+curl https://domainkita.com/api/courses</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita membuat API route pertama yang membaca data courses langsung dari PostgreSQL.</p>
+<p>Ini adalah titik penting karena LMS mulai berubah dari static data menjadi dynamic data.</p>
+<p>Di lesson berikutnya, kita akan mulai menggunakan API ini di halaman frontend agar daftar course dibaca dari database.</p>
+`,
+          },
+          {
+            id: "s2d-8-video",
+            title: "Video API Route Courses dari Database",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami cara membuat API route Next.js yang membaca courses dari PostgreSQL.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "35 min",
+          },
+        ],
+      },
+      {
+        id: "s2d-9",
+        title: "Menampilkan Courses dari API",
+        duration: "35 min",
+        summary:
+          "Mengubah halaman daftar course agar membaca data dari API route PostgreSQL, bukan lagi sepenuhnya dari data static.",
+        order: 9,
+        materials: [
+          {
+            id: "s2d-9-html",
+            title: "Menampilkan Courses dari API",
+            type: "html",
+            description:
+              "Membuat fetch data courses dari API, menampilkan hasilnya di frontend, handling loading, error, dan troubleshooting API response.",
+            htmlContent: `
+<h2>Menampilkan Courses dari API</h2>
+<p>Pada lesson ini, kita akan mulai menampilkan daftar course dari API route yang sudah dibuat pada lesson sebelumnya.</p>
+<p>Ini adalah langkah penting karena tampilan LMS mulai membaca data dari PostgreSQL melalui API, bukan hanya dari file static.</p>
+
+<h3>Target lesson</h3>
+<ul>
+  <li>Membuat fungsi fetch courses dari API.</li>
+  <li>Menampilkan data course di halaman frontend.</li>
+  <li>Menangani loading state.</li>
+  <li>Menangani error state.</li>
+  <li>Melakukan test dari browser dan terminal.</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<p>Semua command dijalankan dari folder frontend LMS:</p>
+
+<pre><code>cd /var/www/lms/frontend
+pwd</code></pre>
+
+<p>Pastikan ada file <code>package.json</code>:</p>
+
+<pre><code>ls -la</code></pre>
+
+<h3>Langkah 1 — Pastikan API courses sudah berjalan</h3>
+<p>Sebelum membuat UI, pastikan endpoint API dari lesson sebelumnya sudah bisa diakses.</p>
+
+<pre><code>npm run dev</code></pre>
+
+<p>Buka terminal lain, lalu test:</p>
+
+<pre><code>curl http://localhost:3000/api/courses</code></pre>
+
+<p>Atau buka dari browser:</p>
+
+<pre><code>http://localhost:3000/api/courses</code></pre>
+
+<p>Jika response JSON muncul, kita bisa lanjut ke frontend.</p>
+
+<h3>Langkah 2 — Buat helper fetch courses</h3>
+<p>Buat folder library jika belum ada:</p>
+
+<pre><code>mkdir -p src/lib</code></pre>
+
+<p>Buat file helper:</p>
+
+<pre><code>nano src/lib/course-api.ts</code></pre>
+
+<p>Isi file:</p>
+
+<pre><code>export type DynamicCourse = {
+  id: number;
+  slug: string;
+  title: string;
+  description: string | null;
+  access_type: string;
+  is_published: boolean;
+};
+
+export async function fetchDynamicCourses(): Promise&lt;DynamicCourse[]&gt; {
+  const response = await fetch("/api/courses", {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch courses");
+  }
+
+  const result = await response.json();
+
+  return result.data ?? [];
+}</code></pre>
+
+<h3>Langkah 3 — Buat komponen client untuk daftar course</h3>
+<p>Karena kita memakai loading state dan error state, kita buat client component.</p>
+
+<pre><code>mkdir -p src/components/courses
+nano src/components/courses/DynamicCourseList.tsx</code></pre>
+
+<p>Isi file:</p>
+
+<pre><code>"use client";
+
+import { useEffect, useState } from "react";
+import {
+  DynamicCourse,
+  fetchDynamicCourses,
+} from "@/lib/course-api";
+
+export function DynamicCourseList() {
+  const [courses, setCourses] = useState&lt;DynamicCourse[]&gt;([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() =&gt; {
+    async function loadCourses() {
+      try {
+        const data = await fetchDynamicCourses();
+        setCourses(data);
+      } catch (error) {
+        console.error(error);
+        setErrorMessage("Courses belum bisa dimuat dari database.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadCourses();
+  }, []);
+
+  if (isLoading) {
+    return &lt;p&gt;Loading courses...&lt;/p&gt;;
+  }
+
+  if (errorMessage) {
+    return &lt;p&gt;{errorMessage}&lt;/p&gt;;
+  }
+
+  if (courses.length === 0) {
+    return &lt;p&gt;Belum ada course dari database.&lt;/p&gt;;
+  }
+
+  return (
+    &lt;div className="grid gap-4"&gt;
+      {courses.map((course) =&gt; (
+        &lt;article
+          key={course.id}
+          className="rounded-lg border p-4"
+        &gt;
+          &lt;h3 className="text-lg font-semibold"&gt;
+            {course.title}
+          &lt;/h3&gt;
+          &lt;p className="text-sm opacity-80"&gt;
+            {course.description}
+          &lt;/p&gt;
+          &lt;p className="mt-2 text-xs uppercase"&gt;
+            {course.access_type}
+          &lt;/p&gt;
+        &lt;/article&gt;
+      ))}
+    &lt;/div&gt;
+  );
+}</code></pre>
+
+<h3>Langkah 4 — Tampilkan komponen di halaman test</h3>
+<p>Buat halaman test agar tidak mengganggu halaman course utama yang sudah ada.</p>
+
+<pre><code>mkdir -p src/app/dynamic-courses
+nano src/app/dynamic-courses/page.tsx</code></pre>
+
+<p>Isi file:</p>
+
+<pre><code>import { DynamicCourseList } from "@/components/courses/DynamicCourseList";
+
+export default function DynamicCoursesPage() {
+  return (
+    &lt;main className="mx-auto max-w-4xl p-6"&gt;
+      &lt;h1 className="mb-4 text-2xl font-bold"&gt;
+        Dynamic Courses
+      &lt;/h1&gt;
+      &lt;p className="mb-6"&gt;
+        Data di halaman ini dibaca dari PostgreSQL melalui API route.
+      &lt;/p&gt;
+      &lt;DynamicCourseList /&gt;
+    &lt;/main&gt;
+  );
+}</code></pre>
+
+<h3>Langkah 5 — Test dari browser</h3>
+<p>Jalankan development server:</p>
+
+<pre><code>npm run dev</code></pre>
+
+<p>Buka:</p>
+
+<pre><code>http://localhost:3000/dynamic-courses</code></pre>
+
+<p>Jika course dari database muncul, berarti frontend sudah berhasil membaca API.</p>
+
+<h3>Langkah 6 — Test build production</h3>
+<p>Setelah berhasil di development, test build:</p>
+
+<pre><code>npm run build</code></pre>
+
+<p>Jika build sukses dan aplikasi berjalan via PM2:</p>
+
+<pre><code>pm2 restart lms
+pm2 logs lms --lines 80</code></pre>
+
+<p>Test dari domain production:</p>
+
+<pre><code>https://domainkita.com/dynamic-courses</code></pre>
+
+<h3>Langkah 7 — Cek alur data</h3>
+<p>Alur yang sekarang kita punya adalah:</p>
+
+<pre><code>PostgreSQL
+  ↓
+API Route /api/courses
+  ↓
+fetchDynamicCourses()
+  ↓
+DynamicCourseList
+  ↓
+Halaman /dynamic-courses</code></pre>
+
+<h3>Catatan penting</h3>
+<p>Pada tahap ini, halaman dynamic masih dibuat sebagai halaman test terpisah. Tujuannya agar kita bisa memvalidasi integrasi database tanpa merusak halaman LMS utama.</p>
+<p>Setelah alur ini stabil, barulah kita bisa memindahkan atau menggabungkan data dynamic ke halaman course catalog utama.</p>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. Halaman menampilkan “Courses belum bisa dimuat dari database”</h4>
+<p>Cek API route:</p>
+
+<pre><code>curl http://localhost:3000/api/courses</code></pre>
+
+<p>Jika API error, cek terminal atau PM2 log.</p>
+
+<h4>2. Module not found: Can't resolve '@/lib/course-api'</h4>
+<p>Pastikan file benar-benar ada:</p>
+
+<pre><code>ls -la src/lib
+ls -la src/lib/course-api.ts</code></pre>
+
+<p>Jika project belum memakai alias <code>@</code>, gunakan relative import sesuai struktur folder project.</p>
+
+<h4>3. Module not found: DynamicCourseList</h4>
+<p>Pastikan file komponen ada:</p>
+
+<pre><code>ls -la src/components/courses
+ls -la src/components/courses/DynamicCourseList.tsx</code></pre>
+
+<h4>4. API berhasil tetapi halaman kosong</h4>
+<p>Cek apakah response API memiliki field <code>data</code>.</p>
+
+<pre><code>curl http://localhost:3000/api/courses</code></pre>
+
+<p>Jika <code>data</code> kosong, jalankan seed ulang:</p>
+
+<pre><code>psql -h localhost -U lms_user -d lms_db -f database/seed.sql</code></pre>
+
+<h4>5. Build gagal karena JSX di file salah</h4>
+<p>Pastikan file yang berisi JSX memakai ekstensi <code>.tsx</code>, bukan <code>.ts</code>.</p>
+
+<pre><code>ls -la src/components/courses</code></pre>
+
+<h4>6. Error DATABASE_URL saat production</h4>
+<p>Pastikan file environment production tersedia dan PM2 direstart setelah build.</p>
+
+<pre><code>ls -la | grep env
+npm run build
+pm2 restart lms
+pm2 logs lms --lines 80</code></pre>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms/frontend
+curl http://localhost:3000/api/courses
+mkdir -p src/lib
+nano src/lib/course-api.ts
+mkdir -p src/components/courses
+nano src/components/courses/DynamicCourseList.tsx
+mkdir -p src/app/dynamic-courses
+nano src/app/dynamic-courses/page.tsx
+npm run dev
+npm run build
+pm2 restart lms
+pm2 logs lms --lines 80</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita membuat halaman frontend yang membaca data courses dari API.</p>
+<p>Sekarang LMS sudah mulai memiliki alur dynamic: data disimpan di PostgreSQL, dibaca API route, lalu ditampilkan di frontend.</p>
+<p>Di lesson berikutnya, kita akan mulai membuat halaman detail course dynamic berdasarkan slug.</p>
+`,
+          },
+          {
+            id: "s2d-9-video",
+            title: "Video Menampilkan Courses dari API",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami cara menampilkan data courses dari API PostgreSQL ke frontend LMS.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "35 min",
+          },
+        ],
+      },
     ],
   },
 ];
@@ -990,7 +1543,7 @@ export const fromStaticLmsToDynamicLmsCourse: Course = {
   price: null,
   accessType: "free",
   level: "Beginner",
-  totalDuration: "1 Module • 7 Lessons",
+  totalDuration: "1 Module • 9 Lessons",
   shortDescription:
     "Mengubah LMS static menjadi LMS dynamic dengan database, login, member area, course assignment, dan progress tracking.",
   description:
