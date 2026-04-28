@@ -3,5 +3,6 @@ dist
 .next
 .env
 .env.local
+.env.production
 coverage
 lms_content.md.tmplms_content.md.tmp
