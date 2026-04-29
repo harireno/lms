@@ -9,8 +9,9 @@ type RouteParams = {
 
 export async function GET(
   request: Request,
-  { params }: RouteParams
+  context: { params: Promise<{ slug: string }> }
 ) {
+  const { slug } = await context.params;
   try {
     const courseResult = await pool.query(
       "SELECT id, slug, title, description, access_type, is_published FROM courses WHERE slug = $1 AND is_published = true LIMIT 1",
