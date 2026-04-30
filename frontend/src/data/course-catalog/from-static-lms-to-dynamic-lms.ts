@@ -2079,6 +2079,285 @@ SELECT id, name, email, role, created_at FROM users;
           },
         ],
       },
+      {
+        id: "s2d-12",
+        title: "Pondasi Login Member",
+        duration: "40 min",
+        summary:
+          "Membuat pondasi login member dengan API route Next.js, verifikasi email dan password, serta response user yang aman tanpa mengirim password hash.",
+        order: 12,
+        materials: [
+          {
+            id: "s2d-12-html",
+            title: "Pondasi Login Member",
+            type: "html",
+            description:
+              "Membuat API login member, membandingkan password dengan bcrypt, validasi user, test endpoint login, dan troubleshooting error login.",
+            htmlContent: `
+<h2>Pondasi Login Member</h2>
+<p>Pada lesson ini, kita akan membuat pondasi login member.</p>
+<p>Lesson sebelumnya sudah membuat register member. Sekarang kita membuat API login untuk mengecek email dan password yang dikirim user.</p>
+
+<h3>Target lesson</h3>
+<ul>
+  <li>Membuat API route login.</li>
+  <li>Mencari user berdasarkan email.</li>
+  <li>Membandingkan password input dengan password hash di database.</li>
+  <li>Mengembalikan data user yang aman.</li>
+  <li>Mengetes login dengan curl.</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<p>Semua command dijalankan dari folder frontend LMS:</p>
+
+<pre><code>cd /var/www/lms/frontend
+pwd</code></pre>
+
+<p>Pastikan ada file <code>package.json</code>:</p>
+
+<pre><code>ls -la</code></pre>
+
+<h3>Langkah 1 — Pastikan user demo sudah ada</h3>
+<p>Masuk ke database:</p>
+
+<pre><code>psql -h localhost -U lms_user -d lms_db</code></pre>
+
+<p>Cek user:</p>
+
+<pre><code>SELECT id, name, email, role, created_at FROM users;</code></pre>
+
+<p>Keluar:</p>
+
+<pre><code>\\q</code></pre>
+
+<p>Jika belum ada user, jalankan register dari lesson sebelumnya terlebih dahulu.</p>
+
+<h3>Langkah 2 — Pastikan bcryptjs sudah terinstall</h3>
+
+<pre><code>npm list bcryptjs</code></pre>
+
+<p>Jika belum ada:</p>
+
+<pre><code>npm install bcryptjs
+npm install -D @types/bcryptjs</code></pre>
+
+<h3>Langkah 3 — Buat API route login</h3>
+
+<pre><code>mkdir -p src/app/api/auth/login
+nano src/app/api/auth/login/route.ts</code></pre>
+
+<h3>Langkah 4 — Isi API login</h3>
+
+<pre><code>import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
+import { pool } from "@/lib/db";
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const email = String(body.email || "").trim().toLowerCase();
+    const password = String(body.password || "");
+
+    if (!email || !password) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Email and password are required",
+        },
+        { status: 400 }
+      );
+    }
+
+    const userResult = await pool.query(
+      "SELECT id, name, email, password_hash, role, created_at FROM users WHERE email = $1 LIMIT 1",
+      [email]
+    );
+
+    const user = userResult.rows[0];
+
+    if (!user) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid email or password",
+        },
+        { status: 401 }
+      );
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      password,
+      user.password_hash
+    );
+
+    if (!isPasswordValid) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid email or password",
+        },
+        { status: 401 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        created_at: user.created_at,
+      },
+    });
+  } catch (error) {
+    console.error("POST /api/auth/login error:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Failed to login",
+      },
+      { status: 500 }
+    );
+  }
+}</code></pre>
+
+<h3>Langkah 5 — Jalankan development server</h3>
+
+<pre><code>npm run dev</code></pre>
+
+<h3>Langkah 6 — Test login dengan curl</h3>
+<p>Jika memakai Windows PowerShell:</p>
+
+<pre><code>curl.exe -X POST http://localhost:3000/api/auth/login ^
+  -H "Content-Type: application/json" ^
+  -d "{\\"email\\":\\"member@example.com\\",\\"password\\":\\"password123\\"}"</code></pre>
+
+<p>Jika memakai Linux/WSL:</p>
+
+<pre><code>curl -X POST http://localhost:3000/api/auth/login \\
+  -H "Content-Type: application/json" \\
+  -d '{"email":"member@example.com","password":"password123"}'</code></pre>
+
+<h3>Langkah 7 — Expected response</h3>
+
+<pre><code>{
+  "success": true,
+  "data": {
+    "id": 1,
+    "name": "Demo Member",
+    "email": "member@example.com",
+    "role": "member"
+  }
+}</code></pre>
+
+<p>Perhatikan bahwa response tidak mengirim <code>password_hash</code>. Ini penting untuk keamanan.</p>
+
+<h3>Langkah 8 — Test password salah</h3>
+
+<pre><code>curl -X POST http://localhost:3000/api/auth/login \\
+  -H "Content-Type: application/json" \\
+  -d '{"email":"member@example.com","password":"password_salah"}'</code></pre>
+
+<p>Response yang benar adalah status <code>401</code> dengan pesan login gagal.</p>
+
+<h3>Langkah 9 — Test build production</h3>
+
+<pre><code>npm run build
+pm2 restart lms
+pm2 logs lms --lines 80</code></pre>
+
+<p>Test production:</p>
+
+<pre><code>curl -X POST https://domainkita.com/api/auth/login \\
+  -H "Content-Type: application/json" \\
+  -d '{"email":"member@example.com","password":"password123"}'</code></pre>
+
+<h3>Catatan keamanan penting</h3>
+<ul>
+  <li>Login API ini masih pondasi awal.</li>
+  <li>Kita belum membuat session atau cookie login.</li>
+  <li>Jangan pernah mengirim <code>password_hash</code> ke frontend.</li>
+  <li>Pesan error login sebaiknya dibuat umum: <code>Invalid email or password</code>.</li>
+  <li>Production wajib memakai HTTPS.</li>
+</ul>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. Login selalu gagal</h4>
+<p>Cek apakah user benar-benar ada:</p>
+
+<pre><code>psql -h localhost -U lms_user -d lms_db
+SELECT id, email, role FROM users;
+\\q</code></pre>
+
+<h4>2. Module not found: bcryptjs</h4>
+
+<pre><code>npm install bcryptjs
+npm install -D @types/bcryptjs</code></pre>
+
+<h4>3. relation "users" does not exist</h4>
+<p>Schema belum dijalankan.</p>
+
+<pre><code>psql -h localhost -U lms_user -d lms_db -f database/schema.sql</code></pre>
+
+<h4>4. password_hash undefined</h4>
+<p>Pastikan query login mengambil kolom <code>password_hash</code>.</p>
+
+<pre><code>SELECT id, email, password_hash FROM users;</code></pre>
+
+<h4>5. Body JSON tidak terbaca</h4>
+<p>Pastikan request memakai header:</p>
+
+<pre><code>Content-Type: application/json</code></pre>
+
+<h4>6. API 500 Internal Server Error</h4>
+<p>Cek terminal development atau PM2 log:</p>
+
+<pre><code>pm2 logs lms --lines 100</code></pre>
+
+<h4>7. Permission denied for table users</h4>
+
+<pre><code>sudo -i -u postgres
+psql
+\\c lms_db
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO lms_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO lms_user;
+\\q
+exit</code></pre>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms/frontend
+npm list bcryptjs
+npm install bcryptjs
+npm install -D @types/bcryptjs
+mkdir -p src/app/api/auth/login
+nano src/app/api/auth/login/route.ts
+npm run dev
+curl -X POST http://localhost:3000/api/auth/login -H "Content-Type: application/json" -d '{"email":"member@example.com","password":"password123"}'
+npm run build
+pm2 restart lms
+pm2 logs lms --lines 80</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita membuat pondasi login member.</p>
+<p>API login sudah bisa mencari user berdasarkan email, membandingkan password dengan hash, dan mengembalikan data user yang aman.</p>
+<p>Di lesson berikutnya, kita akan mulai menyiapkan session atau cookie agar status login bisa dipakai oleh halaman member.</p>
+`,
+          },
+          {
+            id: "s2d-12-video",
+            title: "Video Pondasi Login Member",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami pembuatan API login member dengan Next.js dan PostgreSQL.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "40 min",
+          },
+        ],
+      },
     ],
   },
 ];
