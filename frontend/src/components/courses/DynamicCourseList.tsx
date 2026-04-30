@@ -7,13 +7,6 @@ import {
   fetchDynamicCourses,
 } from "@/lib/course-api";
 
-<Link
-  href={"/dynamic-courses/" + course.slug}
-  className="mt-4 inline-block text-sm font-semibold underline"
->
-  Lihat detail course
-</Link>
-
 export function DynamicCourseList() {
   const [courses, setCourses] = useState<DynamicCourse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,6 +56,14 @@ export function DynamicCourseList() {
           <p className="mt-2 text-xs uppercase">
             {course.access_type}
           </p>
+
+          <Link
+            href={"/dynamic-courses/" + course.slug}
+            className="mt-4 inline-block text-sm font-semibold underline"
+          >
+            Lihat detail course
+          </Link>
+  
         </article>
       ))}
     </div>

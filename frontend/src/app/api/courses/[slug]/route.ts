@@ -1,12 +1,6 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 
-type RouteParams = {
-  params: {
-    slug: string;
-  };
-};
-
 export async function GET(
   request: Request,
   context: { params: Promise<{ slug: string }> }
@@ -15,7 +9,7 @@ export async function GET(
   try {
     const courseResult = await pool.query(
       "SELECT id, slug, title, description, access_type, is_published FROM courses WHERE slug = $1 AND is_published = true LIMIT 1",
-      [params.slug]
+      [slug]
     );
 
     const course = courseResult.rows[0];

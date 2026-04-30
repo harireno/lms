@@ -1,9 +1,16 @@
 import { notFound } from "next/navigation";
 
 type PageProps = {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
+};
+
+type DynamicLesson = {
+  id: number;
+  slug: string;
+  title: string;
+  order_no: number;
 };
 
 async function getCourse(slug: string) {
@@ -29,8 +36,8 @@ async function getCourse(slug: string) {
 export default async function DynamicCourseDetailPage({
   params,
 }: PageProps) {
-  const course = await getCourse(params.slug);
-
+  const { slug } = await params;
+  const course = await getCourse(slug);
   if (!course) {
     notFound();
   }
@@ -58,7 +65,7 @@ export default async function DynamicCourseDetailPage({
           <p>Belum ada lesson untuk course ini.</p>
         ) : (
           <ol className="space-y-3">
-            {course.lessons.map((lesson: any) => (
+            {course.lessons.map((lesson: DynamicLesson) => (
               <li
                 key={lesson.id}
                 className="rounded-lg border p-4"
