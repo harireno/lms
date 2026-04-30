@@ -2358,6 +2358,343 @@ pm2 logs lms --lines 80</code></pre>
           },
         ],
       },
+      {
+        id: "s2d-13",
+        title: "Session Cookie untuk Login Member",
+        duration: "42 min",
+        summary:
+          "Membuat pondasi session login menggunakan signed cookie sederhana agar status login member bisa dibaca oleh halaman dan API berikutnya.",
+        order: 13,
+        materials: [
+          {
+            id: "s2d-13-html",
+            title: "Session Cookie untuk Login Member",
+            type: "html",
+            description:
+              "Menambahkan SESSION_SECRET, membuat helper session, menyimpan cookie saat login, membuat endpoint current user, dan test status login member.",
+            htmlContent: `
+<h2>Session Cookie untuk Login Member</h2>
+<p>Pada lesson ini, kita akan membuat pondasi session login menggunakan cookie.</p>
+<p>Lesson sebelumnya sudah berhasil membuat API login. Tetapi login belum benar-benar “diingat” oleh browser. Sekarang kita akan menyimpan status login member dalam cookie sederhana.</p>
+
+<h3>Target lesson</h3>
+<ul>
+  <li>Menambahkan <code>SESSION_SECRET</code> ke environment.</li>
+  <li>Membuat helper session sederhana.</li>
+  <li>Mengubah API login agar mengirim cookie.</li>
+  <li>Membuat API <code>/api/auth/me</code> untuk membaca user login.</li>
+  <li>Mengetes cookie login dengan curl.</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<p>Semua command dijalankan dari folder frontend LMS:</p>
+
+<pre><code>cd /var/www/lms/frontend
+pwd</code></pre>
+
+<p>Pastikan ada file <code>package.json</code>:</p>
+
+<pre><code>ls -la</code></pre>
+
+<h3>Langkah 1 — Tambahkan SESSION_SECRET</h3>
+<p>Buka file environment local:</p>
+
+<pre><code>nano .env.local</code></pre>
+
+<p>Tambahkan secret:</p>
+
+<pre><code>SESSION_SECRET=ganti_dengan_string_panjang_random_yang_kuat</code></pre>
+
+<p>Untuk production, tambahkan juga ke <code>.env.production</code>:</p>
+
+<pre><code>nano .env.production</code></pre>
+
+<p>Contoh:</p>
+
+<pre><code>SESSION_SECRET=ganti_dengan_secret_production_yang_berbeda</code></pre>
+
+<p><strong>Penting:</strong> jangan commit file env yang berisi secret ke Git.</p>
+
+<h3>Langkah 2 — Buat helper session</h3>
+<p>Buat file helper:</p>
+
+<pre><code>mkdir -p src/lib
+nano src/lib/session.ts</code></pre>
+
+<p>Isi file:</p>
+
+<pre><code>import crypto from "crypto";
+
+export type SessionUser = {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+};
+
+const SESSION_COOKIE_NAME = "lms_session";
+
+function getSessionSecret() {
+  const secret = process.env.SESSION_SECRET;
+
+  if (!secret) {
+    throw new Error("SESSION_SECRET is not defined");
+  }
+
+  return secret;
+}
+
+function signPayload(payload: string) {
+  return crypto
+    .createHmac("sha256", getSessionSecret())
+    .update(payload)
+    .digest("hex");
+}
+
+export function createSessionValue(user: SessionUser) {
+  const payload = Buffer.from(JSON.stringify(user)).toString("base64url");
+  const signature = signPayload(payload);
+
+  return payload + "." + signature;
+}
+
+export function readSessionValue(value: string | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const parts = value.split(".");
+
+  if (parts.length !== 2) {
+    return null;
+  }
+
+  const [payload, signature] = parts;
+  const expectedSignature = signPayload(payload);
+
+  if (signature !== expectedSignature) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(
+      Buffer.from(payload, "base64url").toString("utf8")
+    ) as SessionUser;
+  } catch {
+    return null;
+  }
+}
+
+export { SESSION_COOKIE_NAME };</code></pre>
+
+<h3>Langkah 3 — Update API login agar mengirim cookie</h3>
+<p>Buka file login:</p>
+
+<pre><code>nano src/app/api/auth/login/route.ts</code></pre>
+
+<p>Tambahkan import session:</p>
+
+<pre><code>import {
+  SESSION_COOKIE_NAME,
+  createSessionValue,
+} from "@/lib/session";</code></pre>
+
+<p>Ganti bagian response login sukses menjadi pola berikut:</p>
+
+<pre><code>const safeUser = {
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+};
+
+const response = NextResponse.json({
+  success: true,
+  data: {
+    ...safeUser,
+    created_at: user.created_at,
+  },
+});
+
+response.cookies.set({
+  name: SESSION_COOKIE_NAME,
+  value: createSessionValue(safeUser),
+  httpOnly: true,
+  sameSite: "lax",
+  secure: process.env.NODE_ENV === "production",
+  path: "/",
+  maxAge: 60 * 60 * 24 * 7,
+});
+
+return response;</code></pre>
+
+<h3>Langkah 4 — Buat API current user</h3>
+<p>Endpoint ini dipakai untuk mengecek siapa user yang sedang login.</p>
+
+<pre><code>mkdir -p src/app/api/auth/me
+nano src/app/api/auth/me/route.ts</code></pre>
+
+<p>Isi file:</p>
+
+<pre><code>import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import {
+  SESSION_COOKIE_NAME,
+  readSessionValue,
+} from "@/lib/session";
+
+export async function GET() {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME);
+  const user = readSessionValue(sessionCookie?.value);
+
+  if (!user) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Not authenticated",
+      },
+      { status: 401 }
+    );
+  }
+
+  return NextResponse.json({
+    success: true,
+    data: user,
+  });
+}</code></pre>
+
+<h3>Langkah 5 — Jalankan development server</h3>
+
+<pre><code>npm run dev</code></pre>
+
+<h3>Langkah 6 — Test login dan simpan cookie</h3>
+<p>Jika memakai Linux/WSL:</p>
+
+<pre><code>curl -i -c cookies.txt -X POST http://localhost:3000/api/auth/login \\
+  -H "Content-Type: application/json" \\
+  -d '{"email":"member@example.com","password":"password123"}'</code></pre>
+
+<p>Jika memakai Windows PowerShell, gunakan:</p>
+
+<pre><code>curl.exe -i -c cookies.txt -X POST http://localhost:3000/api/auth/login ^
+  -H "Content-Type: application/json" ^
+  -d "{\\"email\\":\\"member@example.com\\",\\"password\\":\\"password123\\"}"</code></pre>
+
+<p>Jika berhasil, response header akan memiliki <code>Set-Cookie</code>.</p>
+
+<h3>Langkah 7 — Test current user dengan cookie</h3>
+<p>Gunakan cookie yang tadi disimpan:</p>
+
+<pre><code>curl -b cookies.txt http://localhost:3000/api/auth/me</code></pre>
+
+<p>Expected response:</p>
+
+<pre><code>{
+  "success": true,
+  "data": {
+    "id": 1,
+    "name": "Demo Member",
+    "email": "member@example.com",
+    "role": "member"
+  }
+}</code></pre>
+
+<h3>Langkah 8 — Test tanpa cookie</h3>
+
+<pre><code>curl http://localhost:3000/api/auth/me</code></pre>
+
+<p>Expected response:</p>
+
+<pre><code>{
+  "success": false,
+  "message": "Not authenticated"
+}</code></pre>
+
+<h3>Langkah 9 — Test build production</h3>
+
+<pre><code>npm run build
+pm2 restart lms
+pm2 logs lms --lines 80</code></pre>
+
+<h3>Catatan keamanan penting</h3>
+<ul>
+  <li>Cookie memakai <code>httpOnly</code> agar tidak mudah dibaca JavaScript browser.</li>
+  <li><code>secure</code> aktif saat production agar cookie hanya dikirim melalui HTTPS.</li>
+  <li>Session ini masih pondasi sederhana, belum menggantikan sistem auth enterprise.</li>
+  <li>Untuk production besar, kita bisa lanjut ke session table, JWT yang lebih matang, atau library auth khusus.</li>
+</ul>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. SESSION_SECRET is not defined</h4>
+<p>Pastikan file env sudah berisi <code>SESSION_SECRET</code>, lalu restart server.</p>
+
+<pre><code>cat .env.local
+npm run dev</code></pre>
+
+<p>Untuk production:</p>
+
+<pre><code>cat .env.production
+npm run build
+pm2 restart lms</code></pre>
+
+<h4>2. Cookie tidak muncul</h4>
+<p>Cek response login dengan <code>-i</code> agar header terlihat:</p>
+
+<pre><code>curl -i -c cookies.txt -X POST http://localhost:3000/api/auth/login -H "Content-Type: application/json" -d '{"email":"member@example.com","password":"password123"}'</code></pre>
+
+<h4>3. /api/auth/me selalu 401</h4>
+<p>Pastikan request membawa cookie:</p>
+
+<pre><code>curl -b cookies.txt http://localhost:3000/api/auth/me</code></pre>
+
+<h4>4. Login sukses tapi production cookie tidak tersimpan</h4>
+<p>Jika <code>NODE_ENV=production</code>, cookie memakai <code>secure: true</code>. Jadi harus diakses lewat HTTPS.</p>
+
+<pre><code>https://domainkita.com</code></pre>
+
+<h4>5. Error crypto atau Buffer</h4>
+<p>Helper session ini dipakai di server-side route, bukan client component. Jangan import <code>session.ts</code> ke komponen client.</p>
+
+<h4>6. Build gagal karena cookies harus await</h4>
+<p>Pada Next.js versi baru, <code>cookies()</code> bisa bersifat async. Pastikan memakai:</p>
+
+<pre><code>const cookieStore = await cookies();</code></pre>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms/frontend
+nano .env.local
+nano .env.production
+mkdir -p src/lib
+nano src/lib/session.ts
+nano src/app/api/auth/login/route.ts
+mkdir -p src/app/api/auth/me
+nano src/app/api/auth/me/route.ts
+npm run dev
+curl -i -c cookies.txt -X POST http://localhost:3000/api/auth/login -H "Content-Type: application/json" -d '{"email":"member@example.com","password":"password123"}'
+curl -b cookies.txt http://localhost:3000/api/auth/me
+npm run build
+pm2 restart lms</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita membuat pondasi session cookie untuk login member.</p>
+<p>Setelah login sukses, browser menerima cookie <code>lms_session</code>. Endpoint <code>/api/auth/me</code> bisa membaca cookie tersebut untuk mengetahui user yang sedang login.</p>
+<p>Di lesson berikutnya, kita akan membuat logout agar session bisa dihapus dengan aman.</p>
+`,
+          },
+          {
+            id: "s2d-13-video",
+            title: "Video Session Cookie untuk Login Member",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami pondasi session cookie login member pada Next.js.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "42 min",
+          },
+        ],
+      },
     ],
   },
 ];

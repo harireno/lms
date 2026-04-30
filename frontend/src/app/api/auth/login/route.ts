@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { pool } from "@/lib/db";
+import {
+  SESSION_COOKIE_NAME,
+  createSessionValue,
+} from "@/lib/session";
 
 export async function POST(request: Request) {
   try {
@@ -50,16 +54,32 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({
+    const safeUser = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    };
+
+    const response = NextResponse.json({
       success: true,
       data: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
+        ...safeUser,
         created_at: user.created_at,
       },
     });
+
+    response.cookies.set({
+      name: SESSION_COOKIE_NAME,
+      value: createSessionValue(safeUser),
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+    });
+
+    return response;
   } catch (error) {
     console.error("POST /api/auth/login error:", error);
 
