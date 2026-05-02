@@ -6,3 +6,5 @@ dist
 .env.production
 coverage
 lms_content.md.tmplms_content.md.tmp
+cookies.txt
+frontend/cookies.txt
