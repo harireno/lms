@@ -1,6 +1,9 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useCourseProgress } from "@/hooks/useCourseProgress";
+import { startBrowserCourseProgress } from "@/lib/course-progress";
 import type { Course, LearnerCourseProgress } from "@/types/course.types";
 
 type CourseDetailClientProps = {
@@ -14,9 +17,12 @@ export default function CourseDetailClient({
   courseImage,
   initialProgress,
 }: CourseDetailClientProps) {
+  const router = useRouter();
   const { progress, summary } = useCourseProgress(course, initialProgress);
+  const [isStarting, setIsStarting] = useState(false);
 
   const isFreeCourse = course.price === null;
+  const hasStarted = progress.enrollmentStatus !== "not_started";
   const currentLesson = progress.currentLessonId
     ? course.lessons.find((lesson) => lesson.id === progress.currentLessonId) ?? null
     : null;
@@ -26,6 +32,55 @@ export default function CourseDetailClient({
       ? `/courses/${course.slug}/lessons/${course.lessons[0].id}`
       : `/courses/${course.slug}`;
   const totalMaterialCount = summary.totalMaterials;
+  const startHref = course.lessons[0]
+    ? `/courses/${course.slug}/lessons/${course.lessons[0].id}`
+    : `/courses/${course.slug}`;
+
+  async function handleStartFreeCourse() {
+    if (!isFreeCourse) {
+      router.push(continueHref);
+      return;
+    }
+
+    setIsStarting(true);
+    // const nextProgress = startBrowserCourseProgress(course);
+    // router.push(
+    //   nextProgress.currentLessonId
+    //     ? `/courses/${course.slug}/lessons/${nextProgress.currentLessonId}`
+    //     : startHref
+    // );
+
+    try {
+      const response = await fetch("/api/enrollments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          courseSlug: course.slug,
+        }),
+      });
+
+      if (response.status === 401) {
+        router.push("/login");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Failed to enroll course");
+      }
+
+      const nextProgress = startBrowserCourseProgress(course);
+      router.push(
+        nextProgress.currentLessonId
+          ? `/courses/${course.slug}/lessons/${nextProgress.currentLessonId}`
+          : startHref
+      );
+    } catch (error) {
+      console.error(error);
+      setIsStarting(false);
+    }
+  }
 
   return (
     <div className="course-detail-page">
@@ -71,13 +126,23 @@ export default function CourseDetailClient({
               <a href="#course-curriculum" className="btn-primary">
                 View Curriculum
               </a>
-              <a href={continueHref} className="btn-secondary">
-                {progress.completedLessonIds.length > 0
+              {/* <a href={continueHref} className="btn-secondary">
+                {progress.completedLessonIds.length > 0 */}
+              <button
+                type="button"
+                onClick={hasStarted ? () => router.push(continueHref) : handleStartFreeCourse}
+                disabled={isStarting}
+                className="btn-secondary"
+              >
+                {isStarting
+                  ? "Starting..."
+                  : progress.completedLessonIds.length > 0                          
                   ? "Continue Learning"
                   : isFreeCourse
                     ? "Start Free Course"
                     : "Browse Courses"}
-              </a>
+              {/* </a> */}
+              </button>
             </div>
           </div>
 
@@ -388,9 +453,23 @@ export default function CourseDetailClient({
               </div>
             </div>
 
-            <a href={continueHref} className="btn-primary course-sidebar-btn">
+            {/* <a href={continueHref} className="btn-primary course-sidebar-btn">
               {progress.completedLessonIds.length > 0 ? "Continue Learning" : isFreeCourse ? "Access Now" : "Enroll Now"}
-            </a>
+            </a> */}
+            <button
+              type="button"
+              onClick={hasStarted ? () => router.push(continueHref) : handleStartFreeCourse}
+              disabled={isStarting}
+              className="btn-primary course-sidebar-btn"
+            >
+              {isStarting
+                ? "Starting..."
+                : progress.completedLessonIds.length > 0
+                  ? "Continue Learning"
+                  : isFreeCourse
+                    ? "Access Now"
+                    : "Enroll Now"}
+            </button>            
 
             <a href="/courses" className="btn-secondary course-sidebar-btn">
               View All Courses

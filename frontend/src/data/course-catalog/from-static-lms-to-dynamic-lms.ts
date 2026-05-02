@@ -3136,6 +3136,558 @@ pm2 logs lms --lines 80</code></pre>
           },
         ],
       },
+      {
+        id: "s2d-16",
+        title: "Proteksi Member Dashboard",
+        duration: "38 min",
+        summary:
+          "Melindungi halaman dashboard agar hanya bisa dibuka oleh member yang sudah login, tanpa merusak UI dashboard yang sudah ada.",
+        order: 16,
+        materials: [
+          {
+            id: "s2d-16-html",
+            title: "Proteksi Member Dashboard",
+            type: "html",
+            description:
+              "Membuat auth guard sederhana untuk dashboard, cek /api/auth/me, redirect ke login jika belum login, dan menjaga UI DashboardClient tetap utuh.",
+            htmlContent: `
+<h2>Proteksi Member Dashboard</h2>
+<p>Pada lesson ini, kita akan melindungi halaman dashboard agar hanya bisa dibuka oleh member yang sudah login.</p>
+<p>UI dashboard yang sudah ada tidak akan kita ubah dari nol. Kita hanya menambahkan lapisan pengecekan login sebelum dashboard ditampilkan.</p>
+
+<h3>Target lesson</h3>
+<ul>
+  <li>Membuat komponen auth guard.</li>
+  <li>Mengecek status login melalui <code>/api/auth/me</code>.</li>
+  <li>Redirect ke <code>/login</code> jika user belum login.</li>
+  <li>Menampilkan dashboard jika user sudah login.</li>
+  <li>Menjaga tampilan dashboard lama tetap aman.</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<pre><code>cd /var/www/lms/frontend
+pwd</code></pre>
+
+<h3>Langkah 1 — Buat komponen Auth Guard</h3>
+<pre><code>mkdir -p src/components/auth
+nano src/components/auth/RequireAuth.tsx</code></pre>
+
+<p>Isi file:</p>
+
+<pre><code>"use client";
+
+import { ReactNode, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
+type CurrentUser = {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+};
+
+type RequireAuthProps = {
+  children: ReactNode;
+};
+
+export default function RequireAuth({ children }: RequireAuthProps) {
+  const router = useRouter();
+  const [user, setUser] = useState&lt;CurrentUser | null&gt;(null);
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() =&gt; {
+    async function checkAuth() {
+      try {
+        const response = await fetch("/api/auth/me", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          router.replace("/login");
+          return;
+        }
+
+        const result = await response.json();
+        setUser(result.data);
+      } catch (error) {
+        console.error(error);
+        router.replace("/login");
+      } finally {
+        setIsChecking(false);
+      }
+    }
+
+    checkAuth();
+  }, [router]);
+
+  if (isChecking) {
+    return (
+      &lt;main className="mx-auto max-w-4xl p-6"&gt;
+        &lt;p&gt;Checking member session...&lt;/p&gt;
+      &lt;/main&gt;
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  return &lt;&gt;{children}&lt;/&gt;;
+}</code></pre>
+
+<h3>Langkah 2 — Update halaman dashboard</h3>
+<p>Buka file:</p>
+
+<pre><code>nano src/app/dashboard/page.tsx</code></pre>
+
+<p>Ganti isinya menjadi:</p>
+
+<pre><code>import RequireAuth from "@/components/auth/RequireAuth";
+import DashboardClient from "@/components/dashboard/DashboardClient";
+import { learnerCourseProgress } from "@/data/course-progress";
+
+export default function DashboardPage() {
+  return (
+    &lt;RequireAuth&gt;
+      &lt;DashboardClient initialProgressList={learnerCourseProgress} /&gt;
+    &lt;/RequireAuth&gt;
+  );
+}</code></pre>
+
+<h3>Langkah 3 — Test belum login</h3>
+<pre><code>npm run dev</code></pre>
+
+<p>Buka:</p>
+
+<pre><code>http://localhost:3000/dashboard</code></pre>
+
+<p>Jika belum login, halaman harus diarahkan ke:</p>
+
+<pre><code>http://localhost:3000/login</code></pre>
+
+<h3>Langkah 4 — Test setelah login</h3>
+<p>Login lewat halaman:</p>
+
+<pre><code>http://localhost:3000/login</code></pre>
+
+<p>Setelah login berhasil, buka lagi:</p>
+
+<pre><code>http://localhost:3000/dashboard</code></pre>
+
+<p>Dashboard harus tampil seperti sebelumnya.</p>
+
+<h3>Langkah 5 — Test logout</h3>
+<p>Logout dari halaman login, lalu buka lagi dashboard.</p>
+<p>Jika cookie sudah terhapus, dashboard harus kembali redirect ke login.</p>
+
+<h3>Langkah 6 — Test build</h3>
+<pre><code>npm run build
+pm2 restart lms
+pm2 logs lms --lines 80</code></pre>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. Dashboard tetap terbuka walau belum login</h4>
+<p>Pastikan file <code>src/app/dashboard/page.tsx</code> sudah dibungkus dengan <code>RequireAuth</code>.</p>
+
+<h4>2. Selalu redirect ke login padahal sudah login</h4>
+<p>Cek apakah cookie <code>lms_session</code> ada di browser.</p>
+<p>Cek juga endpoint:</p>
+
+<pre><code>curl -b cookies.txt http://localhost:3000/api/auth/me</code></pre>
+
+<h4>3. Error Module not found</h4>
+<p>Pastikan path file benar:</p>
+
+<pre><code>ls -la src/components/auth/RequireAuth.tsx</code></pre>
+
+<h4>4. Build gagal karena ReactNode</h4>
+<p>Pastikan import ini ada:</p>
+
+<pre><code>import { ReactNode, useEffect, useState } from "react";</code></pre>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms/frontend
+mkdir -p src/components/auth
+nano src/components/auth/RequireAuth.tsx
+nano src/app/dashboard/page.tsx
+npm run dev
+npm run build
+pm2 restart lms</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita tidak merombak UI dashboard. Kita hanya menambahkan auth guard agar dashboard hanya bisa dibuka oleh member yang sudah login.</p>
+<p>Ini membuat LMS mulai terasa seperti aplikasi member system sungguhan.</p>
+<p>Di lesson berikutnya, kita bisa lanjut menampilkan status login member di header tanpa merusak tampilan header yang sudah ada.</p>
+`,
+          },
+          {
+            id: "s2d-16-video",
+            title: "Video Proteksi Member Dashboard",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami proteksi halaman dashboard dengan session cookie.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "38 min",
+          },
+        ],
+      },
+      {
+        id: "s2d-17",
+        title: "Header Login Logout Dynamic",
+        duration: "34 min",
+        summary:
+          "Mengubah tombol header agar otomatis menampilkan Login/Register saat belum login, dan nama member plus Logout saat sudah login.",
+        order: 17,
+        materials: [
+          {
+            id: "s2d-17-html",
+            title: "Header Login Logout Dynamic",
+            type: "html",
+            description:
+              "Membuat HeaderAuthActions client component agar header membaca session dari /api/auth/me tanpa merusak UI header yang sudah ada.",
+            htmlContent: `
+<h2>Header Login Logout Dynamic</h2>
+<p>Pada lesson ini, kita memperbaiki header agar status login terlihat benar.</p>
+<p>Masalah sebelumnya: dashboard sudah bisa dibuka setelah login, tetapi header masih menampilkan tombol <code>Login</code>. Penyebabnya adalah tombol header masih static.</p>
+
+<h3>Target lesson</h3>
+<ul>
+  <li>Membuat komponen <code>HeaderAuthActions</code>.</li>
+  <li>Membaca user login dari <code>/api/auth/me</code>.</li>
+  <li>Menampilkan <code>Login</code> dan <code>Get Started</code> jika belum login.</li>
+  <li>Menampilkan nama user dan tombol <code>Logout</code> jika sudah login.</li>
+  <li>Menjaga layout header lama tetap utuh.</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<pre><code>cd /var/www/lms/frontend
+pwd</code></pre>
+
+<h3>Langkah 1 — Buat komponen HeaderAuthActions</h3>
+<pre><code>nano src/components/layout/HeaderAuthActions.tsx</code></pre>
+
+<h3>Langkah 2 — Update Header.tsx</h3>
+<pre><code>nano src/components/layout/Header.tsx</code></pre>
+
+<p>Ganti blok <code>header-actions</code> static menjadi:</p>
+
+<pre><code>&lt;HeaderAuthActions /&gt;</code></pre>
+
+<h3>Langkah 3 — Test belum login</h3>
+<pre><code>npm run dev</code></pre>
+
+<p>Buka:</p>
+<pre><code>http://localhost:3000</code></pre>
+
+<p>Jika belum login, header harus menampilkan:</p>
+<ul>
+  <li><code>Login</code></li>
+  <li><code>Get Started</code></li>
+</ul>
+
+<h3>Langkah 4 — Test setelah login</h3>
+<p>Login dari:</p>
+<pre><code>http://localhost:3000/login</code></pre>
+
+<p>Setelah login, buka dashboard:</p>
+<pre><code>http://localhost:3000/dashboard</code></pre>
+
+<p>Header harus menampilkan nama member dan tombol <code>Logout</code>.</p>
+
+<h3>Langkah 5 — Test Logout dari header</h3>
+<p>Klik tombol <code>Logout</code> di header.</p>
+<p>Setelah logout, user diarahkan ke halaman login dan header kembali menampilkan tombol <code>Login</code>.</p>
+
+<h3>Langkah 6 — Test build</h3>
+<pre><code>npm run build
+pm2 restart lms
+pm2 logs lms --lines 80</code></pre>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. Header masih menampilkan Login setelah login</h4>
+<p>Pastikan <code>Header.tsx</code> sudah memakai <code>HeaderAuthActions</code>, bukan blok static lama.</p>
+
+<h4>2. Header selalu logout / tidak mengenali user</h4>
+<p>Cek endpoint current user:</p>
+<pre><code>curl -b cookies.txt http://localhost:3000/api/auth/me</code></pre>
+
+<h4>3. Error Module not found</h4>
+<p>Pastikan file ini ada:</p>
+<pre><code>ls -la src/components/layout/HeaderAuthActions.tsx</code></pre>
+
+<h4>4. Logout tidak berubah di header</h4>
+<p>Pastikan fungsi logout memanggil:</p>
+<pre><code>router.push("/login");
+router.refresh();</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, header menjadi dynamic berdasarkan status login member.</p>
+<p>UI header lama tetap dijaga, tetapi action button sekarang sudah mengikuti session user.</p>
+<p>Di lesson berikutnya, kita bisa mulai menghubungkan enrollment course free ke member dashboard.</p>
+`,
+          },
+          {
+            id: "s2d-17-video",
+            title: "Video Header Login Logout Dynamic",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami header auth actions yang membaca session member.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "34 min",
+          },
+        ],
+      },
+      {
+        id: "s2d-18",
+        title: "Auto Enroll Free Course ke Dashboard",
+        duration: "36 min",
+        summary:
+          "Menghubungkan tombol Start Free Course agar course masuk ke dashboard member tanpa merusak UI course detail dan dashboard yang sudah ada.",
+        order: 18,
+        materials: [
+          {
+            id: "s2d-18-html",
+            title: "Auto Enroll Free Course ke Dashboard",
+            type: "html",
+            description:
+              "Menambahkan startBrowserCourseProgress, memperbaiki status not_started, lalu menghubungkan tombol Start Free Course dan Access Now ke dashboard progress.",
+            htmlContent: `
+<h2>Auto Enroll Free Course ke Dashboard</h2>
+<p>Pada lesson ini, kita menghubungkan tombol <code>Start Free Course</code> agar course benar-benar masuk ke dashboard member.</p>
+<p>UI course detail dan dashboard tidak kita rombak. Kita hanya memperbaiki logic enrollment progress yang sudah ada.</p>
+
+<h3>Folder kerja command</h3>
+<pre><code>cd /var/www/lms/frontend
+pwd</code></pre>
+
+<h3>File yang diubah</h3>
+<ul>
+  <li><code>src/lib/course-progress.ts</code></li>
+  <li><code>src/components/course/CourseDetailClient.tsx</code></li>
+</ul>
+
+<h3>Alur yang ingin dicapai</h3>
+<pre><code>Member login
+  ↓
+Buka detail course
+  ↓
+Klik Start Free Course / Access Now
+  ↓
+Progress tersimpan di browser
+  ↓
+Course muncul di dashboard
+  ↓
+Member bisa Continue Learning</code></pre>
+
+<h3>Langkah 1 — Update course-progress.ts</h3>
+<p>Kita membuat default progress tetap <code>not_started</code>, lalu menambahkan helper <code>startBrowserCourseProgress()</code>.</p>
+
+<pre><code>nano src/lib/course-progress.ts</code></pre>
+
+<h3>Langkah 2 — Update CourseDetailClient</h3>
+<p>Kita ubah tombol access menjadi button yang menjalankan enrollment logic, bukan hanya link biasa.</p>
+
+<pre><code>nano src/components/course/CourseDetailClient.tsx</code></pre>
+
+<h3>Langkah 3 — Test dari browser</h3>
+<pre><code>npm run dev</code></pre>
+
+<p>Buka course detail:</p>
+<pre><code>http://localhost:3000/courses/from-static-lms-to-dynamic-lms</code></pre>
+
+<p>Klik <code>Start Free Course</code> atau <code>Access Now</code>.</p>
+
+<h3>Langkah 4 — Cek dashboard</h3>
+<pre><code>http://localhost:3000/dashboard</code></pre>
+
+<p>Course yang baru dimulai harus muncul di dashboard.</p>
+
+<h3>Langkah 5 — Test build</h3>
+<pre><code>npm run build
+pm2 restart lms
+pm2 logs lms --lines 80</code></pre>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. Course tidak muncul di dashboard</h4>
+<p>Pastikan tombol course detail sudah memanggil <code>startBrowserCourseProgress(course)</code>.</p>
+
+<h4>2. Semua course langsung muncul di dashboard</h4>
+<p>Pastikan default progress memakai:</p>
+<pre><code>enrollmentStatus: "not_started"</code></pre>
+
+<h4>3. Button terlihat berubah style</h4>
+<p>Pastikan button tetap memakai class lama:</p>
+<pre><code>btn-primary course-sidebar-btn
+btn-secondary</code></pre>
+
+<h4>4. Build error useRouter</h4>
+<p>Pastikan import ini ada:</p>
+<pre><code>import { useRouter } from "next/navigation";</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, tombol mulai course sudah menjadi enrollment action.</p>
+<p>Member yang login bisa memulai course gratis, lalu course tersebut muncul di dashboard tanpa merusak UI yang sudah ada.</p>
+`,
+          },
+          {
+            id: "s2d-18-video",
+            title: "Video Auto Enroll Free Course ke Dashboard",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami auto enroll course gratis ke dashboard member.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "36 min",
+          },
+        ],
+      },
+      {
+        id: "s2d-19",
+        title: "Persist Enrollment ke PostgreSQL",
+        duration: "42 min",
+        summary:
+          "Menyimpan enrollment course gratis ke tabel PostgreSQL agar proses start course tidak hanya tersimpan di browser.",
+        order: 19,
+        materials: [
+          {
+            id: "s2d-19-html",
+            title: "Persist Enrollment ke PostgreSQL",
+            type: "html",
+            description:
+              "Membuat API enrollment, membaca session cookie, validasi course free, menyimpan data ke tabel enrollments, lalu menghubungkannya ke tombol Start Free Course.",
+            htmlContent: `
+<h2>Persist Enrollment ke PostgreSQL</h2>
+<p>Pada lesson sebelumnya, tombol <code>Start Free Course</code> sudah bisa membuat course muncul di dashboard melalui browser progress.</p>
+<p>Pada lesson ini, kita naik satu level: enrollment juga disimpan ke PostgreSQL.</p>
+
+<h3>Target lesson</h3>
+<ul>
+  <li>Membuat API <code>/api/enrollments</code>.</li>
+  <li>Membaca user login dari session cookie.</li>
+  <li>Validasi course berdasarkan slug.</li>
+  <li>Hanya mengizinkan auto enroll untuk course free.</li>
+  <li>Menyimpan data ke tabel <code>enrollments</code>.</li>
+  <li>Menghubungkan tombol course detail ke API enrollment.</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<pre><code>cd /var/www/lms/frontend
+pwd</code></pre>
+
+<h3>Langkah 1 — Pastikan tabel enrollments sudah ada</h3>
+<pre><code>psql -h localhost -U lms_user -d lms_db</code></pre>
+
+<pre><code>\\d enrollments
+SELECT id, slug, title, access_type FROM courses;
+\\q</code></pre>
+
+<p>Jika tabel belum ada, jalankan ulang schema:</p>
+
+<pre><code>psql -h localhost -U lms_user -d lms_db -f database/schema.sql</code></pre>
+
+<h3>Langkah 2 — Buat API enrollment</h3>
+<pre><code>mkdir -p src/app/api/enrollments
+nano src/app/api/enrollments/route.ts</code></pre>
+
+<p>Isi file sesuai patch di atas.</p>
+
+<h3>Langkah 3 — Update CourseDetailClient</h3>
+<pre><code>nano src/components/course/CourseDetailClient.tsx</code></pre>
+
+<p>Ubah function <code>handleStartFreeCourse()</code> menjadi async dan panggil:</p>
+
+<pre><code>await fetch("/api/enrollments", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    courseSlug: course.slug,
+  }),
+});</code></pre>
+
+<h3>Langkah 4 — Test dari browser</h3>
+<pre><code>npm run dev</code></pre>
+
+<p>Login terlebih dahulu:</p>
+<pre><code>http://localhost:3000/login</code></pre>
+
+<p>Buka course detail:</p>
+<pre><code>http://localhost:3000/courses/from-static-lms-to-dynamic-lms</code></pre>
+
+<p>Klik <code>Start Free Course</code> atau <code>Access Now</code>.</p>
+
+<h3>Langkah 5 — Cek data enrollment di database</h3>
+<pre><code>psql -h localhost -U lms_user -d lms_db</code></pre>
+
+<pre><code>SELECT
+  e.id,
+  u.email,
+  c.slug,
+  c.title,
+  e.status,
+  e.enrolled_at
+FROM enrollments e
+JOIN users u ON u.id = e.user_id
+JOIN courses c ON c.id = e.course_id
+ORDER BY e.enrolled_at DESC;
+\\q</code></pre>
+
+<h3>Langkah 6 — Test via curl dengan cookie</h3>
+<pre><code>curl -i -c cookies.txt -X POST http://localhost:3000/api/auth/login \\
+  -H "Content-Type: application/json" \\
+  -d '{"email":"member@example.com","password":"password123"}'
+
+curl -i -b cookies.txt -X POST http://localhost:3000/api/enrollments \\
+  -H "Content-Type: application/json" \\
+  -d '{"courseSlug":"from-static-lms-to-dynamic-lms"}'</code></pre>
+
+<h3>Langkah 7 — Test build</h3>
+<pre><code>npm run build
+pm2 restart lms
+pm2 logs lms --lines 80</code></pre>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. API enrollment menghasilkan 401</h4>
+<p>Artinya user belum login atau cookie tidak terkirim. Login dulu dari halaman login, atau gunakan curl dengan <code>-b cookies.txt</code>.</p>
+
+<h4>2. Course not found</h4>
+<p>Pastikan data course sudah ada di database:</p>
+<pre><code>SELECT id, slug, title FROM courses;</code></pre>
+
+<h4>3. relation "enrollments" does not exist</h4>
+<p>Jalankan schema:</p>
+<pre><code>psql -h localhost -U lms_user -d lms_db -f database/schema.sql</code></pre>
+
+<h4>4. duplicate key error</h4>
+<p>Patch ini memakai <code>ON CONFLICT (user_id, course_id)</code>, jadi klik berulang tidak membuat data dobel.</p>
+
+<h4>5. Tombol berubah style</h4>
+<p>Jangan ubah class tombol. Tetap gunakan class lama:</p>
+<pre><code>btn-secondary
+btn-primary course-sidebar-btn</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, enrollment tidak lagi hanya menjadi state browser.</p>
+<p>Saat member klik <code>Start Free Course</code>, LMS menyimpan enrollment ke PostgreSQL, lalu tetap menjalankan progress browser agar dashboard yang sudah ada tetap bekerja.</p>
+<p>Di lesson berikutnya, kita bisa mulai membuat dashboard membaca enrollment dari database.</p>
+`,
+          },
+          {
+            id: "s2d-19-video",
+            title: "Video Persist Enrollment ke PostgreSQL",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami penyimpanan enrollment member ke PostgreSQL.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "42 min",
+          },
+        ],
+      },
     ],
   },
 ];
@@ -3148,7 +3700,7 @@ export const fromStaticLmsToDynamicLmsCourse: Course = {
   price: null,
   accessType: "free",
   level: "Beginner",
-  totalDuration: "1 Module • 10 Lessons",
+  totalDuration: "1 Module • 19 Lessons",
   shortDescription:
     "Mengubah LMS static menjadi LMS dynamic dengan database, login, member area, course assignment, dan progress tracking.",
   description:

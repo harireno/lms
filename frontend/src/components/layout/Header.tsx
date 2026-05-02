@@ -1,4 +1,5 @@
 import HeaderLearnerIndicator from "@/components/layout/HeaderLearnerIndicator";
+import HeaderAuthActions from "@/components/layout/HeaderAuthActions";
 
 export default function Header() {
   return (
@@ -21,15 +22,9 @@ export default function Header() {
 
         <HeaderLearnerIndicator />
 
-        <div className="header-actions">
-          <a href="/login" className="header-link-button">
-            Login
-          </a>
-          <a href="/register" className="header-cta-button">
-            Get Started
-          </a>
-        </div>
+        <HeaderAuthActions />
       </div>
+      
     </header>
   );
 }

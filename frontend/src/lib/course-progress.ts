@@ -42,10 +42,12 @@ function buildDefaultProgress(course: Course): LearnerCourseProgress {
     courseId: course.id,
     startedAt: new Date().toISOString(),
     lastAccessedAt: new Date().toISOString(),
-    currentLessonId: course.lessons[0]?.id ?? "",
+    // currentLessonId: course.lessons[0]?.id ?? "",
+    currentLessonId: "",
     completedLessonIds: [],
     completedMaterialIds: [],
-    enrollmentStatus: course.lessons.length ? "active" : "not_started",
+    // enrollmentStatus: course.lessons.length ? "active" : "not_started",
+    enrollmentStatus: "not_started",
   };
 }
 
@@ -114,16 +116,42 @@ function normalizeProgress(
     .map((lesson) => lesson.id);
 
   const allLessonsCompleted = completedLessonIds.length === course.lessons.length;
+  const hasStarted =
+    progress.enrollmentStatus !== "not_started" ||
+    completedLessonIds.length > 0 ||
+    completedMaterialIds.length > 0; 
 
   return {
     ...progress,
     completedLessonIds,
     completedMaterialIds,
-    enrollmentStatus: allLessonsCompleted ? "completed" : "active",
-    currentLessonId: allLessonsCompleted
+    // enrollmentStatus: allLessonsCompleted ? "completed" : "active",
+    // currentLessonId: allLessonsCompleted
+    enrollmentStatus: !hasStarted
+      ? "not_started"
+      : allLessonsCompleted
+        ? "completed"
+        : "active",
+    currentLessonId: !hasStarted
+      ? ""
+      : allLessonsCompleted    
       ? course.lessons[course.lessons.length - 1]?.id ?? progress.currentLessonId
       : progress.currentLessonId || course.lessons[0]?.id || "",
   };
+}
+
+export function startBrowserCourseProgress(course: Course) {
+  const now = new Date().toISOString();
+
+  return saveBrowserCourseProgress(course, {
+    courseId: course.id,
+    startedAt: now,
+    lastAccessedAt: now,
+    currentLessonId: course.lessons[0]?.id ?? "",
+    completedLessonIds: [],
+    completedMaterialIds: [],
+    enrollmentStatus: course.lessons.length ? "active" : "not_started",
+  });
 }
 
 export function getBrowserCourseProgress(course: Course) {
