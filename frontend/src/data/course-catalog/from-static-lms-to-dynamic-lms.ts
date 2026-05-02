@@ -2860,6 +2860,282 @@ pm2 restart lms</code></pre>
           },
         ],
       },
+      {
+        id: "s2d-15",
+        title: "Halaman Login Member",
+        duration: "40 min",
+        summary:
+          "Membuat halaman login frontend yang terhubung ke API login, menyimpan session cookie, mengecek current user, dan menyediakan tombol logout.",
+        order: 15,
+        materials: [
+          {
+            id: "s2d-15-html",
+            title: "Halaman Login Member",
+            type: "html",
+            description:
+              "Membuat UI login member dengan form email/password, fetch ke API login, cek /api/auth/me, logout, dan troubleshooting error login frontend.",
+            htmlContent: `
+<h2>Halaman Login Member</h2>
+<p>Pada lesson ini, kita akan membuat halaman login member di frontend.</p>
+<p>Lesson sebelumnya sudah membuat API login, session cookie, current user, dan logout. Sekarang kita buat UI agar member bisa login dari browser, bukan hanya lewat curl.</p>
+
+<h3>Target lesson</h3>
+<ul>
+  <li>Membuat halaman <code>/login</code>.</li>
+  <li>Membuat form email dan password.</li>
+  <li>Mengirim data login ke <code>/api/auth/login</code>.</li>
+  <li>Mengecek current user dari <code>/api/auth/me</code>.</li>
+  <li>Membuat tombol logout yang memanggil <code>/api/auth/logout</code>.</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<p>Semua command dijalankan dari folder frontend LMS:</p>
+
+<pre><code>cd /var/www/lms/frontend
+pwd</code></pre>
+
+<h3>Langkah 1 — Buat halaman login</h3>
+
+<pre><code>mkdir -p src/app/login
+nano src/app/login/page.tsx</code></pre>
+
+<h3>Langkah 2 — Isi halaman login</h3>
+
+<pre><code>"use client";
+
+import { FormEvent, useEffect, useState } from "react";
+
+type CurrentUser = {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+};
+
+export default function LoginPage() {
+  const [email, setEmail] = useState("member@example.com");
+  const [password, setPassword] = useState("password123");
+  const [user, setUser] = useState&lt;CurrentUser | null&gt;(null);
+  const [message, setMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  async function loadCurrentUser() {
+    const response = await fetch("/api/auth/me", {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      setUser(null);
+      return;
+    }
+
+    const result = await response.json();
+    setUser(result.data);
+  }
+
+  useEffect(() =&gt; {
+    loadCurrentUser();
+  }, []);
+
+  async function handleLogin(event: FormEvent&lt;HTMLFormElement&gt;) {
+    event.preventDefault();
+    setIsLoading(true);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setMessage(result.message || "Login gagal");
+        return;
+      }
+
+      setMessage("Login berhasil");
+      await loadCurrentUser();
+    } catch (error) {
+      console.error(error);
+      setMessage("Terjadi error saat login");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleLogout() {
+    setIsLoading(true);
+    setMessage("");
+
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+
+      setUser(null);
+      setMessage("Logout berhasil");
+    } catch (error) {
+      console.error(error);
+      setMessage("Terjadi error saat logout");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  return (
+    &lt;main className="mx-auto max-w-md p-6"&gt;
+      &lt;h1 className="mb-4 text-2xl font-bold"&gt;
+        Login Member
+      &lt;/h1&gt;
+
+      {user ? (
+        &lt;section className="rounded-lg border p-4"&gt;
+          &lt;p className="mb-2 font-semibold"&gt;
+            Sudah login sebagai:
+          &lt;/p&gt;
+          &lt;p&gt;{user.name}&lt;/p&gt;
+          &lt;p className="text-sm opacity-80"&gt;{user.email}&lt;/p&gt;
+          &lt;p className="text-sm opacity-80"&gt;Role: {user.role}&lt;/p&gt;
+
+          &lt;button
+            type="button"
+            onClick={handleLogout}
+            disabled={isLoading}
+            className="mt-4 rounded bg-black px-4 py-2 text-white disabled:opacity-60"
+          &gt;
+            {isLoading ? "Processing..." : "Logout"}
+          &lt;/button&gt;
+        &lt;/section&gt;
+      ) : (
+        &lt;form onSubmit={handleLogin} className="space-y-4"&gt;
+          &lt;div&gt;
+            &lt;label className="mb-1 block text-sm font-medium"&gt;
+              Email
+            &lt;/label&gt;
+            &lt;input
+              type="email"
+              value={email}
+              onChange={(event) =&gt; setEmail(event.target.value)}
+              className="w-full rounded border px-3 py-2"
+              required
+            /&gt;
+          &lt;/div&gt;
+
+          &lt;div&gt;
+            &lt;label className="mb-1 block text-sm font-medium"&gt;
+              Password
+            &lt;/label&gt;
+            &lt;input
+              type="password"
+              value={password}
+              onChange={(event) =&gt; setPassword(event.target.value)}
+              className="w-full rounded border px-3 py-2"
+              required
+            /&gt;
+          &lt;/div&gt;
+
+          &lt;button
+            type="submit"
+            disabled={isLoading}
+            className="w-full rounded bg-black px-4 py-2 text-white disabled:opacity-60"
+          &gt;
+            {isLoading ? "Login..." : "Login"}
+          &lt;/button&gt;
+        &lt;/form&gt;
+      )}
+
+      {message ? (
+        &lt;p className="mt-4 rounded border p-3 text-sm"&gt;
+          {message}
+        &lt;/p&gt;
+      ) : null}
+    &lt;/main&gt;
+  );
+}</code></pre>
+
+<h3>Langkah 3 — Jalankan development server</h3>
+
+<pre><code>npm run dev</code></pre>
+
+<h3>Langkah 4 — Buka halaman login</h3>
+
+<pre><code>http://localhost:3000/login</code></pre>
+
+<p>Coba login memakai user demo:</p>
+
+<pre><code>Email: member@example.com
+Password: password123</code></pre>
+
+<h3>Langkah 5 — Cek cookie di browser</h3>
+<p>Buka Developer Tools → Application → Cookies → pilih domain localhost.</p>
+<p>Jika login berhasil, harus ada cookie bernama <code>lms_session</code>.</p>
+
+<h3>Langkah 6 — Test logout</h3>
+<p>Klik tombol logout. Setelah logout, halaman harus kembali menampilkan form login.</p>
+
+<h3>Langkah 7 — Test build production</h3>
+
+<pre><code>npm run build
+pm2 restart lms
+pm2 logs lms --lines 80</code></pre>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. Login gagal padahal email/password benar</h4>
+<p>Cek API login:</p>
+
+<pre><code>curl -i -c cookies.txt -X POST http://localhost:3000/api/auth/login -H "Content-Type: application/json" -d '{"email":"member@example.com","password":"password123"}'</code></pre>
+
+<h4>2. Cookie tidak muncul di browser</h4>
+<p>Pastikan API login mengirim <code>Set-Cookie</code> dan akses production memakai HTTPS.</p>
+
+<h4>3. /api/auth/me selalu 401</h4>
+<p>Pastikan cookie <code>lms_session</code> ada dan belum logout.</p>
+
+<h4>4. Build gagal karena JSX di file .ts</h4>
+<p>Pastikan halaman login memakai file <code>page.tsx</code>.</p>
+
+<h4>5. SESSION_SECRET is not defined</h4>
+<p>Pastikan file env sudah diisi lalu restart server.</p>
+
+<pre><code>cat .env.local
+npm run dev</code></pre>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms/frontend
+mkdir -p src/app/login
+nano src/app/login/page.tsx
+npm run dev
+npm run build
+pm2 restart lms
+pm2 logs lms --lines 80</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita membuat halaman login member di frontend.</p>
+<p>Member sekarang bisa login, melihat status login, dan logout melalui browser.</p>
+<p>Di lesson berikutnya, kita akan membuat halaman member dashboard sederhana yang hanya bisa dipakai setelah login.</p>
+`,
+          },
+          {
+            id: "s2d-15-video",
+            title: "Video Halaman Login Member",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami pembuatan halaman login member yang terhubung ke API auth.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "40 min",
+          },
+        ],
+      },
     ],
   },
 ];
