@@ -2695,6 +2695,171 @@ pm2 restart lms</code></pre>
           },
         ],
       },
+      {
+        id: "s2d-14",
+        title: "Logout Member",
+        duration: "30 min",
+        summary:
+          "Membuat endpoint logout untuk menghapus session cookie member agar user bisa keluar dari sistem dengan aman.",
+        order: 14,
+        materials: [
+          {
+            id: "s2d-14-html",
+            title: "Logout Member",
+            type: "html",
+            description:
+              "Membuat API logout, menghapus cookie session, test logout dengan curl, dan validasi bahwa /api/auth/me kembali menjadi unauthenticated.",
+            htmlContent: `
+<h2>Logout Member</h2>
+<p>Pada lesson ini, kita akan membuat fitur logout member.</p>
+<p>Lesson sebelumnya sudah membuat session cookie. Sekarang kita perlu menyediakan endpoint untuk menghapus cookie tersebut agar user bisa keluar dari sistem.</p>
+
+<h3>Target lesson</h3>
+<ul>
+  <li>Membuat API route logout.</li>
+  <li>Menghapus cookie <code>lms_session</code>.</li>
+  <li>Mengetes logout dengan curl.</li>
+  <li>Memastikan <code>/api/auth/me</code> kembali menghasilkan status unauthenticated.</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<p>Semua command dijalankan dari folder frontend LMS:</p>
+
+<pre><code>cd /var/www/lms/frontend
+pwd</code></pre>
+
+<h3>Langkah 1 — Buat API route logout</h3>
+
+<pre><code>mkdir -p src/app/api/auth/logout
+nano src/app/api/auth/logout/route.ts</code></pre>
+
+<h3>Langkah 2 — Isi file logout route</h3>
+
+<pre><code>import { NextResponse } from "next/server";
+import { SESSION_COOKIE_NAME } from "@/lib/session";
+
+export async function POST() {
+  const response = NextResponse.json({
+    success: true,
+    message: "Logged out successfully",
+  });
+
+  response.cookies.set({
+    name: SESSION_COOKIE_NAME,
+    value: "",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 0,
+  });
+
+  return response;
+}</code></pre>
+
+<h3>Langkah 3 — Jalankan development server</h3>
+
+<pre><code>npm run dev</code></pre>
+
+<h3>Langkah 4 — Login dan simpan cookie</h3>
+
+<pre><code>curl -i -c cookies.txt -X POST http://localhost:3000/api/auth/login \\
+  -H "Content-Type: application/json" \\
+  -d '{"email":"member@example.com","password":"password123"}'</code></pre>
+
+<h3>Langkah 5 — Pastikan user sedang login</h3>
+
+<pre><code>curl -b cookies.txt http://localhost:3000/api/auth/me</code></pre>
+
+<p>Jika berhasil, response berisi data user login.</p>
+
+<h3>Langkah 6 — Logout</h3>
+
+<pre><code>curl -i -b cookies.txt -c cookies.txt -X POST http://localhost:3000/api/auth/logout</code></pre>
+
+<p>Perintah ini membawa cookie lama dan menyimpan hasil cookie baru yang sudah dihapus.</p>
+
+<h3>Langkah 7 — Cek ulang current user</h3>
+
+<pre><code>curl -b cookies.txt http://localhost:3000/api/auth/me</code></pre>
+
+<p>Expected response:</p>
+
+<pre><code>{
+  "success": false,
+  "message": "Not authenticated"
+}</code></pre>
+
+<h3>PowerShell version</h3>
+
+<pre><code>curl.exe -i -c cookies.txt -X POST http://localhost:3000/api/auth/login ^
+  -H "Content-Type: application/json" ^
+  -d "{\\"email\\":\\"member@example.com\\",\\"password\\":\\"password123\\"}"
+
+curl.exe -b cookies.txt http://localhost:3000/api/auth/me
+
+curl.exe -i -b cookies.txt -c cookies.txt -X POST http://localhost:3000/api/auth/logout
+
+curl.exe -b cookies.txt http://localhost:3000/api/auth/me</code></pre>
+
+<h3>Test build production</h3>
+
+<pre><code>npm run build
+pm2 restart lms
+pm2 logs lms --lines 80</code></pre>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. Logout sukses tetapi /api/auth/me masih login</h4>
+<p>Pastikan test logout memakai <code>-b cookies.txt -c cookies.txt</code> agar cookie hasil logout disimpan ulang.</p>
+
+<pre><code>curl -i -b cookies.txt -c cookies.txt -X POST http://localhost:3000/api/auth/logout</code></pre>
+
+<h4>2. SESSION_COOKIE_NAME tidak ditemukan</h4>
+<p>Pastikan file session helper sudah ada:</p>
+
+<pre><code>ls -la src/lib/session.ts</code></pre>
+
+<h4>3. Production logout tidak menghapus cookie</h4>
+<p>Jika production memakai <code>secure: true</code>, pastikan akses dilakukan lewat HTTPS.</p>
+
+<pre><code>https://domainkita.com</code></pre>
+
+<h4>4. API logout 404</h4>
+<p>Pastikan path file benar:</p>
+
+<pre><code>ls -la src/app/api/auth/logout/route.ts</code></pre>
+
+<h3>Ringkasan command</h3>
+
+<pre><code>cd /var/www/lms/frontend
+mkdir -p src/app/api/auth/logout
+nano src/app/api/auth/logout/route.ts
+npm run dev
+curl -i -c cookies.txt -X POST http://localhost:3000/api/auth/login -H "Content-Type: application/json" -d '{"email":"member@example.com","password":"password123"}'
+curl -b cookies.txt http://localhost:3000/api/auth/me
+curl -i -b cookies.txt -c cookies.txt -X POST http://localhost:3000/api/auth/logout
+curl -b cookies.txt http://localhost:3000/api/auth/me
+npm run build
+pm2 restart lms</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, kita membuat endpoint logout member.</p>
+<p>Logout bekerja dengan cara menghapus cookie <code>lms_session</code>. Setelah logout, endpoint <code>/api/auth/me</code> kembali menghasilkan status tidak login.</p>
+<p>Di lesson berikutnya, kita bisa mulai membuat halaman login dan logout di frontend agar member tidak hanya test lewat curl.</p>
+`,
+          },
+          {
+            id: "s2d-14-video",
+            title: "Video Logout Member",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami cara membuat logout member dengan menghapus session cookie.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "30 min",
+          },
+        ],
+      },
     ],
   },
 ];
