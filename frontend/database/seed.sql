@@ -83,3 +83,21 @@ ON CONFLICT (course_id, slug) DO UPDATE SET
   title = EXCLUDED.title,
   order_no = EXCLUDED.order_no,
   updated_at = NOW();
+
+INSERT INTO lessons (course_id, slug, title, order_no)
+SELECT id, 's2d-22', 'Dashboard Membaca Lesson Progress Database', 22
+FROM courses
+WHERE slug = 'from-static-lms-to-dynamic-lms'
+ON CONFLICT (course_id, slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  order_no = EXCLUDED.order_no,
+  updated_at = NOW();  
+
+INSERT INTO lessons (course_id, slug, title, order_no)
+SELECT id, 's2d-23', 'Course Detail dan Lesson Page Membaca Progress Database', 23
+FROM courses
+WHERE slug = 'from-static-lms-to-dynamic-lms'
+ON CONFLICT (course_id, slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  order_no = EXCLUDED.order_no,
+  updated_at = NOW();  

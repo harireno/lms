@@ -13,6 +13,12 @@ type DashboardClientProps = {
   initialProgressList: LearnerCourseProgress[];
 };
 
+type DatabaseLessonProgress = {
+  course_slug: string;
+  lesson_slug: string;
+  is_completed: boolean;
+};
+
 export default function DashboardClient({
   initialProgressList,
 }: DashboardClientProps) {
@@ -39,6 +45,15 @@ export default function DashboardClient({
           (item: { slug: string }) => item.slug
         );
 
+        const lessonProgressResponse = await fetch("/api/lesson-progress", {
+          cache: "no-store",
+        });
+
+        const databaseLessonProgressList: DatabaseLessonProgress[] =
+          lessonProgressResponse.ok
+            ? (await lessonProgressResponse.json()).data || []
+            : [];
+ 
         const syncedProgressList = [...browserProgressList];
 
         enrolledSlugs.forEach((slug: string) => {
@@ -57,7 +72,38 @@ export default function DashboardClient({
           }
         });
 
-        setProgressList(syncedProgressList);
+        const mergedProgressList = syncedProgressList.map((progress) => {
+          const course = courses.find((item) => item.id === progress.courseId);
+
+          if (!course) {
+            return progress;
+          }
+
+          const completedLessonIdsFromDatabase = databaseLessonProgressList
+            .filter(
+              (item) =>
+                item.course_slug === course.slug &&
+                item.is_completed === true
+            )
+            .map((item) => item.lesson_slug)
+            .filter((lessonId) =>
+              course.lessons.some((lesson) => lesson.id === lessonId)
+            );
+
+          const completedLessonIds = Array.from(
+            new Set([
+              ...progress.completedLessonIds,
+              ...completedLessonIdsFromDatabase,
+            ])
+          );
+
+          return {
+            ...progress,
+            completedLessonIds,
+          };
+        });
+
+        setProgressList(mergedProgressList);
       } catch (error) {
         console.error(error);
         setProgressList(browserProgressList);

@@ -3992,6 +3992,277 @@ pm2 logs lms --lines 80</code></pre>
           },
         ],
       },
+      {
+        id: "s2d-22",
+        title: "Dashboard Membaca Lesson Progress Database",
+        duration: "42 min",
+        summary:
+          "Menghubungkan dashboard member ke tabel lesson_progress agar progress lesson tetap terbaca dari PostgreSQL meskipun browser progress belum lengkap.",
+        order: 22,
+        materials: [
+          {
+            id: "s2d-22-html",
+            title: "Dashboard Membaca Lesson Progress Database",
+            type: "html",
+            description:
+              "Menambahkan GET /api/lesson-progress, membaca progress lesson dari database, lalu menggabungkannya ke dashboard tanpa mengubah UI.",
+            htmlContent: `
+<h2>Dashboard Membaca Lesson Progress Database</h2>
+<p>Pada Lesson 21, kita sudah menyimpan lesson progress ke PostgreSQL saat member klik <code>Mark Lesson as Completed</code>.</p>
+<p>Pada Lesson 22, dashboard mulai membaca data <code>lesson_progress</code> dari database.</p>
+
+<h3>Target lesson</h3>
+<ul>
+  <li>Menambahkan method <code>GET</code> pada <code>/api/lesson-progress</code>.</li>
+  <li>Membaca lesson progress milik user login.</li>
+  <li>Menggabungkan progress browser dan progress database.</li>
+  <li>Menjaga UI dashboard tetap sama.</li>
+</ul>
+
+<h3>File yang diubah</h3>
+<ul>
+  <li><code>database/seed.sql</code></li>
+  <li><code>src/app/api/lesson-progress/route.ts</code></li>
+  <li><code>src/components/dashboard/DashboardClient.tsx</code></li>
+  <li><code>src/data/course-catalog/from-static-lms-to-dynamic-lms.ts</code></li>
+</ul>
+
+<h3>Alur baru</h3>
+<pre><code>Dashboard dibuka
+  ↓
+Load browser progress
+  ↓
+GET /api/enrollments
+  ↓
+GET /api/lesson-progress
+  ↓
+Gabungkan progress browser + database
+  ↓
+Dashboard menampilkan progress yang lebih akurat</code></pre>
+
+<h3>Langkah 1 — Update seed lesson</h3>
+<pre><code>nano database/seed.sql</code></pre>
+
+<p>Tambahkan seed untuk <code>s2d-22</code>, lalu jalankan:</p>
+
+<pre><code>psql -h localhost -U lms_user -d lms_db -f database/seed.sql</code></pre>
+
+<h3>Langkah 2 — Tambahkan GET /api/lesson-progress</h3>
+<pre><code>nano src/app/api/lesson-progress/route.ts</code></pre>
+
+<p>Method <code>GET</code> ini mengambil semua lesson yang sudah completed untuk user login.</p>
+
+<h3>Langkah 3 — Update DashboardClient</h3>
+<pre><code>nano src/components/dashboard/DashboardClient.tsx</code></pre>
+
+<p>Kita tidak mengubah JSX dashboard. Kita hanya menambahkan logic pembacaan <code>/api/lesson-progress</code>.</p>
+
+<h3>Langkah 4 — Test API</h3>
+<pre><code>npm run dev</code></pre>
+
+<pre><code>curl -i -c cookies.txt -X POST http://localhost:3000/api/auth/login \\
+  -H "Content-Type: application/json" \\
+  -d '{"email":"member@example.com","password":"password123"}'</code></pre>
+
+<pre><code>curl -i -b cookies.txt http://localhost:3000/api/lesson-progress</code></pre>
+
+<p>Expected result:</p>
+<pre><code>"success": true</code></pre>
+
+<h3>Langkah 5 — Test dashboard</h3>
+<p>Buka:</p>
+<pre><code>http://localhost:3000/dashboard</code></pre>
+
+<p>Jika lesson sudah pernah disimpan ke tabel <code>lesson_progress</code>, maka angka <strong>Lesson Progress</strong> di dashboard harus ikut naik.</p>
+
+<h3>Langkah 6 — Cek database</h3>
+<pre><code>psql -h localhost -U lms_user -d lms_db</code></pre>
+
+<pre><code>SELECT
+  u.email,
+  c.slug AS course_slug,
+  l.slug AS lesson_slug,
+  l.title AS lesson_title,
+  lp.is_completed,
+  lp.completed_at
+FROM lesson_progress lp
+JOIN users u ON u.id = lp.user_id
+JOIN lessons l ON l.id = lp.lesson_id
+JOIN courses c ON c.id = l.course_id
+ORDER BY lp.updated_at DESC;
+\\q</code></pre>
+
+<h3>Langkah 7 — Test build</h3>
+<pre><code>npm run build
+pm2 restart lms
+pm2 logs lms --lines 80</code></pre>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. GET /api/lesson-progress menghasilkan 401</h4>
+<p>User belum login atau cookie tidak terkirim.</p>
+
+<h4>2. Dashboard masih 0%</h4>
+<p>Pastikan tabel <code>lesson_progress</code> memang berisi data completed.</p>
+
+<h4>3. Data ada, tapi progress tidak berubah</h4>
+<p>Pastikan <code>lesson_slug</code> di database sama dengan ID lesson static, misalnya <code>s2d-21</code>.</p>
+
+<h4>4. UI dashboard berubah</h4>
+<p>Jangan ubah JSX dashboard. Patch ini hanya mengubah logic <code>loadProgressList()</code>.</p>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, dashboard tidak lagi hanya bergantung pada browser progress.</p>
+<p>Dashboard mulai membaca progress lesson dari PostgreSQL dan menggabungkannya dengan progress lokal.</p>
+<p>Di lesson berikutnya, kita bisa mulai membuat course detail dan lesson page ikut membaca progress database sejak halaman dibuka.</p>
+`,
+          },
+          {
+            id: "s2d-22-video",
+            title: "Video Dashboard Membaca Lesson Progress Database",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami sinkronisasi lesson progress database ke dashboard.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "42 min",
+          },
+        ],
+      },
+      {
+        id: "s2d-23",
+        title: "Course Detail dan Lesson Page Membaca Progress Database",
+        duration: "45 min",
+        summary:
+          "Membuat course detail dan lesson page ikut membaca lesson_progress dari PostgreSQL saat halaman dibuka tanpa mengubah UI yang sudah berjalan.",
+        order: 23,
+        materials: [
+          {
+            id: "s2d-23-html",
+            title: "Course Detail dan Lesson Page Membaca Progress Database",
+            type: "html",
+            description:
+              "Mengupdate hook useCourseProgress agar progress database ikut disinkronkan ke browser progress pada halaman course detail dan lesson detail.",
+            htmlContent: `
+<h2>Course Detail dan Lesson Page Membaca Progress Database</h2>
+<p>Pada Lesson 22, dashboard sudah membaca <code>lesson_progress</code> dari PostgreSQL.</p>
+<p>Pada Lesson 23, kita membuat halaman course detail dan lesson page ikut membaca progress dari database saat halaman dibuka.</p>
+
+<h3>Target lesson</h3>
+<ul>
+  <li>Course detail membaca completed lesson dari database.</li>
+  <li>Lesson page membaca completed lesson dari database.</li>
+  <li>Progress database digabungkan ke browser progress.</li>
+  <li>UI course detail dan lesson page tidak diubah.</li>
+</ul>
+
+<h3>Kenapa perlu lesson ini?</h3>
+<p>Setelah Lesson 22, dashboard sudah lebih akurat karena membaca database.</p>
+<p>Tetapi course detail dan lesson page masih perlu ikut disinkronkan agar status lesson, progress bar, dan jumlah lesson selesai tetap sama dengan database.</p>
+
+<h3>File yang diubah</h3>
+<ul>
+  <li><code>database/seed.sql</code></li>
+  <li><code>src/hooks/useCourseProgress.ts</code></li>
+  <li><code>src/data/course-catalog/from-static-lms-to-dynamic-lms.ts</code></li>
+</ul>
+
+<h3>Alur baru</h3>
+<pre><code>Course Detail / Lesson Page dibuka
+  ↓
+useCourseProgress() membaca browser progress
+  ↓
+GET /api/lesson-progress
+  ↓
+Ambil lesson completed dari database
+  ↓
+Gabungkan database progress + browser progress
+  ↓
+UI lama ikut menampilkan progress terbaru</code></pre>
+
+<h3>Langkah 1 — Update seed lesson</h3>
+<pre><code>nano database/seed.sql</code></pre>
+
+<p>Tambahkan seed untuk <code>s2d-23</code>, lalu jalankan:</p>
+
+<pre><code>psql -h localhost -U lms_user -d lms_db -f database/seed.sql</code></pre>
+
+<h3>Langkah 2 — Update useCourseProgress</h3>
+<pre><code>nano src/hooks/useCourseProgress.ts</code></pre>
+
+<p>Kita menambahkan pembacaan <code>GET /api/lesson-progress</code> di dalam hook.</p>
+<p>Karena course detail, lesson detail, dan progress panel sama-sama memakai hook ini, semuanya ikut sinkron tanpa mengubah JSX UI.</p>
+
+<h3>Langkah 3 — Test API login</h3>
+<pre><code>npm run dev</code></pre>
+
+<pre><code>curl -i -c cookies.txt -X POST http://localhost:3000/api/auth/login \\
+  -H "Content-Type: application/json" \\
+  -d '{"email":"member@example.com","password":"password123"}'</code></pre>
+
+<h3>Langkah 4 — Pastikan ada progress di database</h3>
+<pre><code>curl -i -b cookies.txt http://localhost:3000/api/lesson-progress</code></pre>
+
+<p>Expected result:</p>
+<pre><code>"success": true</code></pre>
+
+<h3>Langkah 5 — Test course detail</h3>
+<p>Buka:</p>
+<pre><code>http://localhost:3000/courses/from-static-lms-to-dynamic-lms</code></pre>
+
+<p>Yang harus terlihat:</p>
+<ul>
+  <li>angka <strong>Your Progress</strong> ikut membaca lesson completed dari database,</li>
+  <li>lesson card yang sudah completed tampil sebagai completed,</li>
+  <li>sidebar Lessons Done ikut berubah.</li>
+</ul>
+
+<h3>Langkah 6 — Test lesson page</h3>
+<p>Buka salah satu lesson yang sudah completed di database:</p>
+<pre><code>http://localhost:3000/courses/from-static-lms-to-dynamic-lms/lessons/s2d-22</code></pre>
+
+<p>Yang harus terlihat:</p>
+<ul>
+  <li>status lesson terbaca completed,</li>
+  <li>lesson list di sidebar ikut menampilkan status done,</li>
+  <li>progress summary ikut sesuai database.</li>
+</ul>
+
+<h3>Langkah 7 — Test build</h3>
+<pre><code>npm run build
+pm2 restart lms
+pm2 logs lms --lines 80</code></pre>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. Course detail masih 0%</h4>
+<p>Cek apakah <code>GET /api/lesson-progress</code> mengembalikan data untuk user login.</p>
+
+<h4>2. Data database ada, tapi lesson tidak completed</h4>
+<p>Pastikan <code>lesson_slug</code> di database sama dengan ID lesson static, misalnya <code>s2d-22</code>.</p>
+
+<h4>3. Halaman redirect atau 401</h4>
+<p>User belum login. Login dulu dari browser atau pakai cookie saat curl.</p>
+
+<h4>4. UI berubah</h4>
+<p>Patch ini tidak mengubah JSX course detail dan lesson page. Yang berubah hanya logic hook <code>useCourseProgress()</code>.</p>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, course detail dan lesson page mulai ikut membaca progress dari PostgreSQL.</p>
+<p>Dengan begitu, dashboard, course detail, dan lesson page mulai memakai sumber progress yang lebih konsisten.</p>
+<p>Di lesson berikutnya, kita bisa mulai menyimpan dan membaca material progress secara lebih detail dari database.</p>
+`,
+          },
+          {
+            id: "s2d-23-video",
+            title: "Video Course Detail dan Lesson Page Membaca Progress Database",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami sinkronisasi progress database ke course detail dan lesson page.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "45 min",
+          },
+        ],
+      },
     ],
   },
 ];

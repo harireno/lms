@@ -6,6 +6,58 @@ import {
   readSessionValue,
 } from "@/lib/session";
 
+export async function GET() {
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME);
+    const user = readSessionValue(sessionCookie?.value);
+
+    if (!user) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Not authenticated",
+        },
+        { status: 401 }
+      );
+    }
+
+    const result = await pool.query(
+      `
+      SELECT
+        c.slug AS course_slug,
+        l.slug AS lesson_slug,
+        l.title AS lesson_title,
+        lp.is_completed,
+        lp.completed_at,
+        lp.updated_at
+      FROM lesson_progress lp
+      JOIN lessons l ON l.id = lp.lesson_id
+      JOIN courses c ON c.id = l.course_id
+      WHERE lp.user_id = $1
+        AND lp.is_completed = true
+      ORDER BY lp.updated_at DESC
+      `,
+      [user.id]
+    );
+
+    return NextResponse.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error("GET /api/lesson-progress error:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Failed to load lesson progress",
+      },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const cookieStore = await cookies();

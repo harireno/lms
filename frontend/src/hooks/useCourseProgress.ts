@@ -10,6 +10,12 @@ import {
 } from "@/lib/course-progress";
 import type { Course, LearnerCourseProgress } from "@/types/course.types";
 
+type DatabaseLessonProgress = {
+  course_slug: string;
+  lesson_slug: string;
+  is_completed: boolean;
+};
+
 export function useCourseProgress(
   course: Course,
   initialProgress: LearnerCourseProgress | null
@@ -36,6 +42,73 @@ export function useCourseProgress(
   useEffect(() => {
     const browserProgress = getBrowserCourseProgress(course);
     setProgress(browserProgress);
+  }, [course]);
+
+  useEffect(() => {
+    async function syncProgressFromDatabase() {
+      try {
+        const response = await fetch("/api/lesson-progress", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const result = await response.json();
+        const databaseLessonProgressList: DatabaseLessonProgress[] =
+          result.data || [];
+
+        const completedLessonIdsFromDatabase = databaseLessonProgressList
+          .filter(
+            (item) =>
+              item.course_slug === course.slug &&
+              item.is_completed === true
+          )
+          .map((item) => item.lesson_slug)
+          .filter((lessonId) =>
+            course.lessons.some((lesson) => lesson.id === lessonId)
+          );
+
+        if (completedLessonIdsFromDatabase.length === 0) {
+          return;
+        }
+
+        const browserProgress = getBrowserCourseProgress(course);
+        const completedLessonIds = Array.from(
+          new Set([
+            ...browserProgress.completedLessonIds,
+            ...completedLessonIdsFromDatabase,
+          ])
+        );
+
+        const nextIncompleteLesson = course.lessons.find(
+          (lesson) => !completedLessonIds.includes(lesson.id)
+        );
+
+        const syncedProgress: LearnerCourseProgress = {
+          ...browserProgress,
+          completedLessonIds,
+          currentLessonId:
+            browserProgress.currentLessonId ||
+            nextIncompleteLesson?.id ||
+            course.lessons[0]?.id ||
+            "",
+          enrollmentStatus:
+            browserProgress.enrollmentStatus === "not_started"
+              ? "active"
+              : browserProgress.enrollmentStatus,
+          lastAccessedAt: new Date().toISOString(),
+        };
+
+        saveBrowserCourseProgress(course, syncedProgress);
+        setProgress(syncedProgress);
+      } catch (error) {
+        console.error("Failed to sync progress from database:", error);
+      }
+    }
+
+    void syncProgressFromDatabase();
   }, [course]);
 
   useEffect(() => {
@@ -95,6 +168,14 @@ export function useCourseProgress(
     const nextProgress = markMaterialCompleted(course, progress, lessonId, materialId);
     saveBrowserCourseProgress(course, nextProgress);
     setProgress(nextProgress);
+
+    const isLessonCompletedAfterMaterialClick =
+      nextProgress.completedLessonIds.includes(lessonId);
+
+    if (isLessonCompletedAfterMaterialClick) {
+      void syncLessonProgressToDatabase(lessonId);
+    }
+
     return nextProgress;
   };
 
