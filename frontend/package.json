@@ -5,7 +5,7 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "lint": "eslint src eslint.config.mjs next.config.js --ext .ts,.tsx,.js,.mjs"
+    "lint": "eslint ."
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

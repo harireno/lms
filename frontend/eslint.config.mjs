@@ -9,4 +9,26 @@ const compat = new FlatCompat({
   baseDirectory: __dirname,
 });
 
-export default [...compat.extends("next/core-web-vitals", "next/typescript")];
+export default [
+  {
+    ignores: [
+      ".next/**",
+      "out/**",
+      "build/**",
+      "dist/**",
+      "node_modules/**",
+      "next-env.d.ts",
+    ],
+  },
+
+  ...compat.extends("next/core-web-vitals", "next/typescript"),
+
+  {
+    rules: {
+      "@next/next/no-html-link-for-pages": "off",
+      "@next/next/no-img-element": "off",
+      "@typescript-eslint/triple-slash-reference": "off",
+      "import/no-anonymous-default-export": "off",
+    },
+  },
+];
