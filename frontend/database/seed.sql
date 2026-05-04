@@ -47,3 +47,39 @@ ON CONFLICT (course_id, slug) DO UPDATE SET
   title = EXCLUDED.title,
   order_no = EXCLUDED.order_no,
   updated_at = NOW();  
+
+INSERT INTO lessons (course_id, slug, title, order_no)
+SELECT id, 's2d-18', 'Auto Enroll Free Course ke Dashboard', 18
+FROM courses
+WHERE slug = 'from-static-lms-to-dynamic-lms'
+ON CONFLICT (course_id, slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  order_no = EXCLUDED.order_no,
+  updated_at = NOW();
+
+INSERT INTO lessons (course_id, slug, title, order_no)
+SELECT id, 's2d-19', 'Persist Enrollment ke PostgreSQL', 19
+FROM courses
+WHERE slug = 'from-static-lms-to-dynamic-lms'
+ON CONFLICT (course_id, slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  order_no = EXCLUDED.order_no,
+  updated_at = NOW();
+
+INSERT INTO lessons (course_id, slug, title, order_no)
+SELECT id, 's2d-20', 'Dashboard Membaca Enrollment Database', 20
+FROM courses
+WHERE slug = 'from-static-lms-to-dynamic-lms'
+ON CONFLICT (course_id, slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  order_no = EXCLUDED.order_no,
+  updated_at = NOW();
+
+INSERT INTO lessons (course_id, slug, title, order_no)
+SELECT id, 's2d-21', 'Persist Lesson Progress ke PostgreSQL', 21
+FROM courses
+WHERE slug = 'from-static-lms-to-dynamic-lms'
+ON CONFLICT (course_id, slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  order_no = EXCLUDED.order_no,
+  updated_at = NOW();

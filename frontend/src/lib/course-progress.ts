@@ -140,7 +140,14 @@ function normalizeProgress(
   };
 }
 
-export function startBrowserCourseProgress(course: Course) {
+
+export function startBrowserCourseProgress(course: Course): LearnerCourseProgress {
+  const existing = getOptionalBrowserCourseProgress(course);
+
+  if (existing && existing.enrollmentStatus !== "not_started") {
+    return existing;
+  }
+
   const now = new Date().toISOString();
 
   return saveBrowserCourseProgress(course, {
@@ -150,7 +157,7 @@ export function startBrowserCourseProgress(course: Course) {
     currentLessonId: course.lessons[0]?.id ?? "",
     completedLessonIds: [],
     completedMaterialIds: [],
-    enrollmentStatus: course.lessons.length ? "active" : "not_started",
+    enrollmentStatus: "active",
   });
 }
 

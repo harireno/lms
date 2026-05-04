@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { courses } from "@/data/courses";
 import {
   getAllBrowserCourseProgress,
+  startBrowserCourseProgress,
   subscribeToCourseProgressChange,
 } from "@/lib/course-progress";
 import type { LearnerCourseProgress } from "@/types/course.types";
@@ -18,12 +19,49 @@ export default function DashboardClient({
   const [progressList, setProgressList] = useState<LearnerCourseProgress[]>(initialProgressList);
 
   useEffect(() => {
-    const loadProgressList = () => {
-      const nextProgressList = getAllBrowserCourseProgress(courses).filter(
+    const loadProgressList = async () => {
+      const browserProgressList = getAllBrowserCourseProgress(courses).filter(
         (progress) => progress.enrollmentStatus !== "not_started"
       ) as LearnerCourseProgress[];
 
-      setProgressList(nextProgressList);
+      try {
+        const response = await fetch("/api/enrollments", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          setProgressList(browserProgressList);
+          return;
+        }
+
+        const result = await response.json();
+        const enrolledSlugs = (result.data || []).map(
+          (item: { slug: string }) => item.slug
+        );
+
+        const syncedProgressList = [...browserProgressList];
+
+        enrolledSlugs.forEach((slug: string) => {
+          const course = courses.find((item) => item.slug === slug);
+
+          if (!course) {
+            return;
+          }
+
+          const alreadyExists = syncedProgressList.some(
+            (progress) => progress.courseId === course.id
+          );
+
+          if (!alreadyExists) {
+            syncedProgressList.push(startBrowserCourseProgress(course));
+          }
+        });
+
+        setProgressList(syncedProgressList);
+      } catch (error) {
+        console.error(error);
+        setProgressList(browserProgressList);
+      }
     };
 
     loadProgressList();

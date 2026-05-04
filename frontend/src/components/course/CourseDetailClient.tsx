@@ -43,12 +43,6 @@ export default function CourseDetailClient({
     }
 
     setIsStarting(true);
-    // const nextProgress = startBrowserCourseProgress(course);
-    // router.push(
-    //   nextProgress.currentLessonId
-    //     ? `/courses/${course.slug}/lessons/${nextProgress.currentLessonId}`
-    //     : startHref
-    // );
 
     try {
       const response = await fetch("/api/enrollments", {

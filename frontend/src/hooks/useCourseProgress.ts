@@ -70,6 +70,27 @@ export function useCourseProgress(
     };
   }, [course, progress]);
 
+  async function syncLessonProgressToDatabase(lessonId: string) {
+    try {
+      const response = await fetch("/api/lesson-progress", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          courseSlug: course.slug,
+          lessonId,
+        }),
+      });
+
+      if (!response.ok) {
+        console.warn("Lesson progress was saved in browser, but not synced to database.");
+      }
+    } catch (error) {
+      console.error("Failed to sync lesson progress to database:", error);
+    }
+  }
+
   const handleMarkMaterialCompleted = (lessonId: string, materialId: string) => {
     const nextProgress = markMaterialCompleted(course, progress, lessonId, materialId);
     saveBrowserCourseProgress(course, nextProgress);
@@ -81,6 +102,7 @@ export function useCourseProgress(
     const nextProgress = markLessonCompleted(course, progress, lessonId);
     saveBrowserCourseProgress(course, nextProgress);
     setProgress(nextProgress);
+    void syncLessonProgressToDatabase(lessonId);
     return nextProgress;
   };
 

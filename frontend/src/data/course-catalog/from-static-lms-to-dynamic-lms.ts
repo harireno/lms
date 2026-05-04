@@ -3688,6 +3688,310 @@ btn-primary course-sidebar-btn</code></pre>
           },
         ],
       },
+      {
+        id: "s2d-20",
+        title: "Dashboard Membaca Enrollment Database",
+        duration: "38 min",
+        summary:
+          "Menghubungkan dashboard member ke data enrollment PostgreSQL agar course tetap muncul walaupun browser progress belum ada.",
+        order: 20,
+        materials: [
+          {
+            id: "s2d-20-html",
+            title: "Dashboard Membaca Enrollment Database",
+            type: "html",
+            description:
+              "Menambahkan GET /api/enrollments, membaca daftar enrollment user login, lalu menyinkronkannya ke dashboard tanpa merusak UI lama.",
+            htmlContent: `
+<h2>Dashboard Membaca Enrollment Database</h2>
+<p>Pada Lesson 19, kita sudah menyimpan enrollment ke PostgreSQL.</p>
+<p>Pada Lesson 20, dashboard mulai membaca data enrollment dari database, bukan hanya dari browser progress.</p>
+
+<h3>Target lesson</h3>
+<ul>
+  <li>Menambahkan method <code>GET</code> di <code>/api/enrollments</code>.</li>
+  <li>Membaca user login dari session cookie.</li>
+  <li>Mengambil daftar course yang sudah di-enroll dari PostgreSQL.</li>
+  <li>Menyinkronkan enrollment database ke browser progress.</li>
+  <li>Menjaga UI dashboard tetap sama.</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<pre><code>cd /var/www/lms/frontend
+pwd</code></pre>
+
+<h3>Langkah 1 — Update API enrollments</h3>
+<pre><code>nano src/app/api/enrollments/route.ts</code></pre>
+
+<p>Tambahkan function <code>GET()</code> sesuai patch di atas.</p>
+
+<h3>Langkah 2 — Update DashboardClient</h3>
+<pre><code>nano src/components/dashboard/DashboardClient.tsx</code></pre>
+
+<p>Kita tidak mengubah UI dashboard. Kita hanya mengubah logic <code>loadProgressList()</code> agar membaca:</p>
+<ul>
+  <li>browser progress yang sudah ada,</li>
+  <li>enrollment dari database,</li>
+  <li>lalu menggabungkan keduanya.</li>
+</ul>
+
+<h3>Langkah 3 — Test API enrollment GET</h3>
+<pre><code>npm run dev</code></pre>
+
+<pre><code>curl -i -c cookies.txt -X POST http://localhost:3000/api/auth/login \\
+  -H "Content-Type: application/json" \\
+  -d '{"email":"member@example.com","password":"password123"}'
+
+curl -i -b cookies.txt http://localhost:3000/api/enrollments</code></pre>
+
+<h3>Langkah 4 — Test dari browser</h3>
+<p>Login:</p>
+<pre><code>http://localhost:3000/login</code></pre>
+
+<p>Buka dashboard:</p>
+<pre><code>http://localhost:3000/dashboard</code></pre>
+
+<p>Course yang sudah tersimpan di tabel <code>enrollments</code> harus muncul di dashboard.</p>
+
+<h3>Langkah 5 — Test database</h3>
+<pre><code>psql -h localhost -U lms_user -d lms_db</code></pre>
+
+<pre><code>SELECT
+  e.id,
+  u.email,
+  c.slug,
+  c.title,
+  e.status,
+  e.enrolled_at
+FROM enrollments e
+JOIN users u ON u.id = e.user_id
+JOIN courses c ON c.id = e.course_id
+ORDER BY e.enrolled_at DESC;
+\\q</code></pre>
+
+<h3>Langkah 6 — Test build</h3>
+<pre><code>npm run build
+pm2 restart lms
+pm2 logs lms --lines 80</code></pre>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. GET /api/enrollments menghasilkan 401</h4>
+<p>User belum login atau cookie tidak terkirim. Login dulu atau gunakan curl dengan <code>-b cookies.txt</code>.</p>
+
+<h4>2. Dashboard kosong padahal database ada enrollment</h4>
+<p>Pastikan slug course di database sama dengan slug course static di source code.</p>
+<pre><code>SELECT slug, title FROM courses;</code></pre>
+
+<h4>3. Course muncul dobel</h4>
+<p>Patch ini memakai pengecekan <code>alreadyExists</code>. Pastikan logic tersebut tidak dihapus.</p>
+
+<h4>4. UI dashboard berubah</h4>
+<p>Jangan ubah JSX dashboard card. Kita hanya mengubah logic data loading.</p>
+
+<h4>5. Build error startBrowserCourseProgress</h4>
+<p>Pastikan import ini ada:</p>
+<pre><code>import {
+  getAllBrowserCourseProgress,
+  startBrowserCourseProgress,
+  subscribeToCourseProgressChange,
+} from "@/lib/course-progress";</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, dashboard mulai membaca enrollment dari PostgreSQL.</p>
+<p>Jika database menyatakan user sudah enroll course, dashboard akan menyinkronkan course itu ke browser progress agar UI lama tetap berjalan.</p>
+<p>Di lesson berikutnya, kita bisa mulai menyimpan lesson progress ke database.</p>
+`,
+          },
+          {
+            id: "s2d-20-video",
+            title: "Video Dashboard Membaca Enrollment Database",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami sinkronisasi enrollment database ke dashboard member.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "38 min",
+          },
+        ],
+      },
+      {
+        id: "s2d-21",
+        title: "Persist Lesson Progress ke PostgreSQL",
+        duration: "40 min",
+        summary:
+          "Menyimpan progress lesson ke PostgreSQL saat member menekan tombol Mark Lesson as Completed tanpa merusak UI lesson progress yang sudah berjalan.",
+        order: 21,
+        materials: [
+          {
+            id: "s2d-21-html",
+            title: "Persist Lesson Progress ke PostgreSQL",
+            type: "html",
+            description:
+              "Membuat API lesson progress, menambahkan seed lesson yang sesuai dengan static lesson id, lalu menghubungkan tombol Mark Lesson as Completed ke PostgreSQL.",
+            htmlContent: `
+<h2>Persist Lesson Progress ke PostgreSQL</h2>
+<p>Pada Lesson 20, dashboard sudah membaca enrollment dari PostgreSQL.</p>
+<p>Pada Lesson 21, kita mulai menyimpan progress lesson ke database saat member menyelesaikan lesson.</p>
+
+<h3>Target lesson</h3>
+<ul>
+  <li>Membuat API <code>/api/lesson-progress</code>.</li>
+  <li>Membaca user login dari session cookie.</li>
+  <li>Mencari course dan lesson dari PostgreSQL.</li>
+  <li>Memastikan user sudah enroll course tersebut.</li>
+  <li>Menyimpan completion ke tabel <code>lesson_progress</code>.</li>
+  <li>Menjaga UI lesson progress tetap sama.</li>
+</ul>
+
+<h3>Folder kerja command</h3>
+<pre><code>cd /var/www/lms/frontend
+pwd</code></pre>
+
+<h3>File yang diubah</h3>
+<ul>
+  <li><code>database/seed.sql</code></li>
+  <li><code>src/app/api/lesson-progress/route.ts</code></li>
+  <li><code>src/hooks/useCourseProgress.ts</code></li>
+  <li><code>src/data/course-catalog/from-static-lms-to-dynamic-lms.ts</code></li>
+</ul>
+
+<h3>Alur yang ingin dicapai</h3>
+<pre><code>Member login
+  ↓
+Member sudah enroll course
+  ↓
+Buka halaman lesson
+  ↓
+Klik Mark Lesson as Completed
+  ↓
+Progress tetap tersimpan di browser
+  ↓
+Progress lesson juga tersimpan di PostgreSQL
+  ↓
+Data bisa dicek di tabel lesson_progress</code></pre>
+
+<h3>Langkah 1 — Update seed lesson</h3>
+<p>Kita perlu memastikan tabel <code>lessons</code> memiliki slug yang sama dengan ID lesson static, misalnya <code>s2d-20</code> dan <code>s2d-21</code>.</p>
+
+<pre><code>nano database/seed.sql</code></pre>
+
+<p>Tambahkan seed untuk lesson <code>s2d-18</code>, <code>s2d-19</code>, <code>s2d-20</code>, dan <code>s2d-21</code>.</p>
+
+<pre><code>psql -h localhost -U lms_user -d lms_db -f database/seed.sql</code></pre>
+
+<p>Cek hasilnya:</p>
+
+<pre><code>psql -h localhost -U lms_user -d lms_db
+SELECT id, course_id, slug, title, order_no FROM lessons ORDER BY order_no;
+\\q</code></pre>
+
+<h3>Langkah 2 — Buat API lesson progress</h3>
+<pre><code>mkdir -p src/app/api/lesson-progress
+nano src/app/api/lesson-progress/route.ts</code></pre>
+
+<p>API ini menerima <code>courseSlug</code> dan <code>lessonId</code>, lalu menyimpan completion ke tabel <code>lesson_progress</code>.</p>
+
+<h3>Langkah 3 — Update useCourseProgress</h3>
+<pre><code>nano src/hooks/useCourseProgress.ts</code></pre>
+
+<p>Kita tidak mengubah UI lesson. Kita hanya menambahkan sinkronisasi database setelah browser progress berhasil disimpan.</p>
+
+<pre><code>void syncLessonProgressToDatabase(lessonId);</code></pre>
+
+<h3>Langkah 4 — Test login dan enrollment</h3>
+<pre><code>npm run dev</code></pre>
+
+<pre><code>curl -i -c cookies.txt -X POST http://localhost:3000/api/auth/login \\
+  -H "Content-Type: application/json" \\
+  -d '{"email":"member@example.com","password":"password123"}'</code></pre>
+
+<p>Pastikan user sudah enroll:</p>
+
+<pre><code>curl -i -b cookies.txt -X POST http://localhost:3000/api/enrollments \\
+  -H "Content-Type: application/json" \\
+  -d '{"courseSlug":"from-static-lms-to-dynamic-lms"}'</code></pre>
+
+<h3>Langkah 5 — Test API lesson progress via curl</h3>
+<pre><code>curl -i -b cookies.txt -X POST http://localhost:3000/api/lesson-progress \\
+  -H "Content-Type: application/json" \\
+  -d '{"courseSlug":"from-static-lms-to-dynamic-lms","lessonId":"s2d-20"}'</code></pre>
+
+<p>Jika berhasil, response harus berisi:</p>
+
+<pre><code>"success": true</code></pre>
+
+<h3>Langkah 6 — Cek database</h3>
+<pre><code>psql -h localhost -U lms_user -d lms_db</code></pre>
+
+<pre><code>SELECT
+  lp.id,
+  u.email,
+  c.slug AS course_slug,
+  l.slug AS lesson_slug,
+  l.title AS lesson_title,
+  lp.is_completed,
+  lp.completed_at
+FROM lesson_progress lp
+JOIN users u ON u.id = lp.user_id
+JOIN lessons l ON l.id = lp.lesson_id
+JOIN courses c ON c.id = l.course_id
+ORDER BY lp.updated_at DESC;
+\\q</code></pre>
+
+<h3>Langkah 7 — Test dari browser</h3>
+<p>Login dari browser:</p>
+<pre><code>http://localhost:3000/login</code></pre>
+
+<p>Buka lesson:</p>
+<pre><code>http://localhost:3000/courses/from-static-lms-to-dynamic-lms/lessons/s2d-20</code></pre>
+
+<p>Klik tombol:</p>
+<pre><code>Mark Lesson as Completed</code></pre>
+
+<p>Setelah itu cek ulang tabel <code>lesson_progress</code>.</p>
+
+<h3>Langkah 8 — Test build</h3>
+<pre><code>npm run build
+pm2 restart lms
+pm2 logs lms --lines 80</code></pre>
+
+<h3>Troubleshooting</h3>
+
+<h4>1. API menghasilkan 401</h4>
+<p>User belum login atau cookie tidak terkirim.</p>
+<pre><code>curl -b cookies.txt http://localhost:3000/api/auth/me</code></pre>
+
+<h4>2. API menghasilkan 403</h4>
+<p>User belum enroll course tersebut. Jalankan ulang POST <code>/api/enrollments</code>.</p>
+
+<h4>3. API menghasilkan 404 Lesson not found</h4>
+<p>Slug lesson belum ada di tabel <code>lessons</code>. Jalankan ulang seed.</p>
+<pre><code>psql -h localhost -U lms_user -d lms_db -f database/seed.sql</code></pre>
+
+<h4>4. Browser progress berubah, tapi database belum masuk</h4>
+<p>Cek console browser dan log terminal <code>npm run dev</code>. Karena UI tidak menunggu API, browser progress tetap jalan walaupun sync database gagal.</p>
+
+<h4>5. Build error route.ts tidak ditemukan</h4>
+<p>Pastikan path file benar:</p>
+<pre><code>ls -la src/app/api/lesson-progress/route.ts</code></pre>
+
+<h3>Kesimpulan</h3>
+<p>Pada lesson ini, tombol <code>Mark Lesson as Completed</code> tidak hanya menyimpan progress ke browser, tetapi juga menyimpan completion ke PostgreSQL.</p>
+<p>UI lesson tetap aman karena sinkronisasi database berjalan setelah browser progress disimpan.</p>
+<p>Di lesson berikutnya, kita bisa mulai membuat dashboard membaca lesson progress dari database, bukan hanya dari browser progress.</p>
+`,
+          },
+          {
+            id: "s2d-21-video",
+            title: "Video Persist Lesson Progress ke PostgreSQL",
+            type: "video",
+            description:
+              "Video pendamping untuk memahami penyimpanan lesson progress member ke PostgreSQL.",
+            url: "https://youtu.be/uOeAt_woF_c?si=v5zNPGajvaOKYyrJ",
+            duration: "40 min",
+          },
+        ],
+      },
     ],
   },
 ];
@@ -3700,7 +4004,7 @@ export const fromStaticLmsToDynamicLmsCourse: Course = {
   price: null,
   accessType: "free",
   level: "Beginner",
-  totalDuration: "1 Module • 19 Lessons",
+  totalDuration: "1 Module • 20 Lessons",
   shortDescription:
     "Mengubah LMS static menjadi LMS dynamic dengan database, login, member area, course assignment, dan progress tracking.",
   description:

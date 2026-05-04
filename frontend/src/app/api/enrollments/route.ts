@@ -6,6 +6,58 @@ import {
   readSessionValue,
 } from "@/lib/session";
 
+export async function GET() {
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME);
+    const user = readSessionValue(sessionCookie?.value);
+
+    if (!user) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Not authenticated",
+        },
+        { status: 401 }
+      );
+    }
+
+    const result = await pool.query(
+      `
+      SELECT
+        e.id AS enrollment_id,
+        e.status,
+        e.enrolled_at,
+        c.id AS course_id,
+        c.slug,
+        c.title,
+        c.description,
+        c.access_type
+      FROM enrollments e
+      JOIN courses c ON c.id = e.course_id
+      WHERE e.user_id = $1
+      ORDER BY e.enrolled_at DESC
+      `,
+      [user.id]
+    );
+
+    return NextResponse.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error("GET /api/enrollments error:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Failed to load enrollments",
+      },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const cookieStore = await cookies();
